@@ -1,28 +1,44 @@
-from pathlib import Path
-
+import pandas as pd
 from loguru import logger
-from tqdm import tqdm
 import typer
 
-from mibici.config import PROCESSED_DATA_DIR, RAW_DATA_DIR
+from mibici.config import RAW_DATA_DIR, STATIONS_FILE, TRIP_FILES
 
 app = typer.Typer()
 
 
+def load_csv(filename: str, nrows: int | None = None) -> pd.DataFrame:
+    """Lee un CSV desde data/raw sin modificar el archivo."""
+    return pd.read_csv(
+        RAW_DATA_DIR / filename,
+        encoding="utf-8",
+        nrows=nrows,
+    )
+
+
+def load_raw(nrows: int | None = None) -> dict[str, pd.DataFrame]:
+    """Carga los meses seleccionados y el catálogo de estaciones."""
+    viajes = pd.concat(
+        [load_csv(filename, nrows=nrows) for filename in TRIP_FILES],
+        ignore_index=True,
+    )
+
+    estaciones = load_csv(STATIONS_FILE)
+
+    return {
+        "viajes": viajes,
+        "estaciones": estaciones,
+    }
+
+
 @app.command()
-def main(
-    # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
-    input_path: Path = RAW_DATA_DIR / "dataset.csv",
-    output_path: Path = PROCESSED_DATA_DIR / "dataset.csv",
-    # ----------------------------------------------
-):
-    # ---- REPLACE THIS WITH YOUR OWN CODE ----
-    logger.info("Processing dataset...")
-    for i in tqdm(range(10), total=10):
-        if i == 5:
-            logger.info("Something happened for iteration 5.")
-    logger.success("Processing dataset complete.")
-    # -----------------------------------------
+def main():
+    """Comprueba la lectura de los archivos con una muestra."""
+    datos = load_raw(nrows=5)
+
+    logger.info(f"Viajes en la muestra: {len(datos['viajes'])}")
+    logger.info(f"Estaciones en el catálogo: {len(datos['estaciones'])}")
+    logger.success("Archivos leídos correctamente.")
 
 
 if __name__ == "__main__":

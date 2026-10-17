@@ -21,6 +21,16 @@ MODELS_DIR = PROJ_ROOT / "models"
 REPORTS_DIR = PROJ_ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
 
+
+# Archivos utilizados en la exploración inicial
+TRIP_FILES = (
+    "datos_abiertos_2026_08.csv",
+    "datos_abiertos_2026_09.csv",
+)
+
+STATIONS_FILE = "nomenclatura_2026_09.csv"
+
+
 # If tqdm is installed, configure loguru with tqdm.write
 # https://github.com/Delgan/loguru/issues/135
 try:
