@@ -1,0 +1,26 @@
+id: H-co-004
+titulo: Estandarizar el tipo del nombre de estación
+estado: resuelto
+autor: co
+responsable: co
+
+alcance: >
+  Archivos completos de viajes de agosto y septiembre de 2026.
+
+hallazgo: >
+  La columna name se carga como object.
+  Se propone string para declarar explícitamente que contiene texto.
+
+evidencia: >
+  Comparación de tipos del catálogo en el notebook
+  1.0-co-structure.ipynb.
+
+accion: >
+  Incorporar la conversión de name a string en
+  data_preparation/structure.py, conservando los faltantes.
+
+resolucion: >
+  Conversión implementada en convert_station_name de
+  mibici/data_preparation/structure.py.
+  Verificado tipo string y conservación de los nombres
+  y faltantes mediante load_stage("structure").

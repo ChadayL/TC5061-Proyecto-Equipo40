@@ -1,0 +1,30 @@
+id: H-co-003
+titulo: Convertir las fechas de los viajes a datetime
+estado: resuelto
+autor: co
+responsable: co
+
+alcance: >
+  Archivos completos de viajes de agosto y septiembre de 2026.
+
+hallazgo: >
+  Inicio_del_viaje y Fin_del_viaje se cargan como object.
+  Ambas columnas pueden convertirse a datetime64[ns]
+  con el formato %Y-%m-%d %H:%M:%S.
+
+evidencia: >
+  Notebook 1.0-co-structure.ipynb.
+  Ambas columnas presentan 0 faltantes originales
+  y 0 valores que no pudieron convertirse.
+
+accion: >
+  Incorporar la conversión de ambas columnas en
+  data_preparation/structure.py, usando errors="raise"
+  para detectar formatos inesperados al incorporar otros meses.
+
+resolucion: >
+  Conversión implementada en convert_dates de
+  mibici/data_preparation/structure.py.
+  Verificadas ambas columnas como datetime64[ns], sin faltantes,
+  mediante load_stage("structure"). Se utiliza errors="raise"
+  para detectar valores que no puedan convertirse.

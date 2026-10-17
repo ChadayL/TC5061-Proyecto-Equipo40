@@ -1,0 +1,27 @@
+id: H-co-002
+titulo: Estandarizar el tipo de Genero
+estado: resuelto
+autor: co
+responsable: co
+
+alcance: >
+  Archivos completos de viajes de agosto y septiembre de 2026.
+
+hallazgo: >
+  Genero se carga como object. Contiene las etiquetas M y F,
+  y 5627 valores faltantes en los datos analizados.
+
+evidencia: >
+  Notebook 1.0-co-structure.ipynb.
+  Se probó la conversión a string conservando las etiquetas,
+  sus conteos y los 5627 faltantes.
+
+accion: >
+  Incorporar la conversión a string en data_preparation/structure.py,
+  conservando los valores faltantes.
+
+resolucion: >
+  Conversión implementada en convert_gender de
+  mibici/data_preparation/structure.py.
+  Verificado tipo string y conservación de las etiquetas
+  y los 5627 faltantes mediante load_stage("structure").

@@ -1,0 +1,31 @@
+id: H-co-001
+titulo: Año de nacimiento cargado como decimal
+estado: resuelto
+autor: co
+responsable: co
+
+alcance: >
+  Archivos completos de viajes de agosto y septiembre de 2026.
+  
+hallazgo: >
+  Año_de_nacimiento se carga como float64.
+  En los datos analizados se encontraron 60 valores faltantes
+  y ningún valor con parte decimal.
+
+evidencia: >
+  Notebook 1.0-co-structure.ipynb.
+  Se probó la conversión a Int64 conservando los 60 faltantes.
+
+accion: >
+  Incorporar la conversión a Int64 en data_preparation/structure.py.
+  Evaluar el tratamiento de los faltantes en la etapa missing.
+
+alcance: >
+  Archivos datos_abiertos_2026_08.csv y datos_abiertos_2026_09.csv,
+  cargados completos. Pendiente validar en el periodo final del proyecto.
+
+resolucion: >
+  Conversión integrada en convert_birth_year de
+  mibici/data_preparation/structure.py.
+  Verificada mediante load_stage("structure"):
+  tipo Int64 y conservación de los 60 faltantes.
