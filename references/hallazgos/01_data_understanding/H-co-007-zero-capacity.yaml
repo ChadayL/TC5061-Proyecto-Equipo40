@@ -1,0 +1,21 @@
+id: H-co-007
+titulo: Estaciones con capacidad cero
+estado: pendiente
+autor: co
+responsable: co
+
+alcance: >
+  Catálogo de septiembre y viajes de agosto-septiembre de 2026.
+
+hallazgo: >
+  Las estaciones 99, 109, 116 y 138 tienen capacidad cero,
+  nombre con prefijo ex- y ninguna salida ni llegada.
+
+evidencia: >
+  Notebook 1.1-co-quality.ipynb, sección Continuous Variables.
+
+accion: >
+  Conservar en el catálogo. Verificar su estado antes de incluirlas
+  como estaciones activas o calcular indicadores por capacidad.
+
+resolucion: null

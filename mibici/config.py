@@ -31,6 +31,10 @@ TRIP_FILES = (
 STATIONS_FILE = "nomenclatura_2026_09.csv"
 
 
+#Edades mínimas y máximas para el año de nacimiento
+MIN_AGE = 10
+MAX_AGE = 100
+
 # If tqdm is installed, configure loguru with tqdm.write
 # https://github.com/Delgan/loguru/issues/135
 try:

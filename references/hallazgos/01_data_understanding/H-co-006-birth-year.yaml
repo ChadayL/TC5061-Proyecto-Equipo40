@@ -1,0 +1,30 @@
+id: H-co-006
+titulo: Años de nacimiento inválidos y edades elevadas
+estado: en_revision
+autor: co
+responsable: co
+
+alcance: >
+  Agosto y septiembre de 2026, después de eliminar duplicados.
+
+hallazgo: >
+  Se encontraron 23 viajes de dos usuarios con años de nacimiento
+  inválidos: 199 y 1420.
+  También se revisaron 277 viajes asociados a edades aproximadas
+  de 81 a 87 años, sin evidencia suficiente para invalidarlas.
+
+evidencia: >
+  Notebook 1.1-co-quality.ipynb, sección Domain Constraints.
+  Año 199: 20 viajes. Año 1420: 3 viajes.
+  No se encontraron años alternativos para esos usuarios
+  en el periodo analizado.
+
+accion: >
+  Definir e implementar una regla general para marcar años
+  inválidos como faltantes, conservando los viajes.
+  Conservar los años asociados a edades de 81 a 87 años.
+
+resolucion: >
+  Implementado replace_invalid_birth_years en missing.py.
+  Convierte años fuera del rango a faltantes sin eliminar viajes.
+  Pendiente definir límites y validar.

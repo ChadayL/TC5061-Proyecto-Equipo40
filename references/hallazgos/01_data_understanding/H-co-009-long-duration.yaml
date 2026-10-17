@@ -1,0 +1,21 @@
+id: H-co-009
+titulo: Duraciones extremas
+estado: pendiente
+autor: co
+responsable: co
+
+alcance: Agosto-septiembre de 2026, sin duplicados.
+
+hallazgo: >
+  Se observaron duraciones extremas, con un máximo de
+  2166.68 minutos. Las fechas coinciden con la duración calculada.
+
+evidencia: >
+  Notebook 1.1-co-quality.ipynb, Temporal Relationships.
+  Inspección de los diez viajes más largos.
+
+accion: >
+  Conservar para conteos de demanda. Evaluar su tratamiento
+  si se utiliza la duración o se estima disponibilidad.
+
+resolucion: null

@@ -1,10 +1,10 @@
 from mibici.dataset import load_raw
-from mibici.data_preparation import structure, missing
+from mibici.data_preparation import quality_fixes, structure
 
 # Orden de ejecución
 STAGES = [
     ("structure", structure.run),
-    ("missing", missing.run),
+    ("quality_fixes", quality_fixes.run),
 ]
 
 
