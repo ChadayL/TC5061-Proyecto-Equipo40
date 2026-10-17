@@ -20,6 +20,7 @@ dependencies = [
     "jupyterlab",
     "loguru",
     "matplotlib",
+    "mlflow>=3.17.1",
     "notebook",
     "numpy",
     "pandas",
