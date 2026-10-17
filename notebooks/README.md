@@ -1,43 +1,32 @@
-# Registro de hallazgos
+# Hallazgos
 
-Cada hallazgo se documenta en un archivo YAML independiente.
+Un archivo YAML por hallazgo, guardado en la etapa donde se detectó:
 
-## Agregar un hallazgo
+- `01_data_understanding/`
+- `02_data_preparation/`
+- `03_modeling/p1_regression/`
+- `03_modeling/p2_classification/`
+- `03_modeling/p3_clustering/`
 
-1. Revisar si ya existe uno sobre el mismo problema.
-2. Copiar plantilla.yaml dentro de pendientes/.
-3. Nombrarlo H-iniciales-numero-descripcion.yaml.
-4. Completar la descripción, evidencia y versión de los datos.
-5. Abrir un Pull Request para incorporarlo.
+## Registrar
 
-Cada integrante administra su numeración.
-Ejemplo: H-co-001-genero-faltante.yaml.
+1. Revisar si el problema ya está registrado.
+2. Copiar [plantilla.yaml](plantilla.yaml) a la carpeta correspondiente.
+3. Reemplazar todos los datos del ejemplo con evidencia propia.
+4. Nombrar el archivo `H-iniciales-numero-descripcion.yaml`.
 
-No incluir datos personales ni registros completos de usuarios.
+Cada autor lleva su consecutivo. El nombre y la ubicación se conservan al resolverlo. `autor` identifica a quien lo detectó; `responsable`, a quien lo atiende.
 
-## Estados
+## Seguimiento
 
-- pendiente: detectado, sin decisión o tratamiento completo.
-- en_revision: se está investigando, implementando o verificando.
-- resuelto: existe una decisión documentada y verificada.
+- `pendiente`: falta atenderlo.
+- `en_revision`: se investiga o trabaja en la solución.
+- `resuelto`: se documentó la decisión y se verificó el resultado.
 
-La carpeta y el campo estado deben coincidir.
-Al cambiar de estado, mover el archivo sin cambiar su nombre.
+El responsable actualiza acción, resolución y estado mediante PR. Coordinar las ediciones sobre el mismo archivo; archivos independientes reducen conflictos, pero no los eliminan.
 
-## Atender un hallazgo
+En la evidencia indicar notebook y sección, archivo o versión de datos y el resultado observado. Evitar incluir identificadores personales o registros completos de usuarios.
 
-1. Asignar un responsable y moverlo a en_revision/.
-2. Documentar las acciones propuestas.
-3. Implementar el tratamiento en el módulo correspondiente.
-4. Referenciar el ID del hallazgo en el Pull Request.
-5. Registrar qué cambió y cómo se verificó.
-6. Moverlo a resueltos/ cuando termine la revisión.
+La solución se implementa en el código reutilizable. En `resolucion` explicar qué se hizo, cómo se verificó y, si aplica, la función o PR. También puede resolverse conservando los datos sin cambios, con justificación.
 
-Resolver no implica necesariamente modificar los datos.
-También puede decidirse conservarlos, justificando la decisión.
-
-## Relación con el código
-
-El YAML documenta el problema, las decisiones y su verificación.
-Las transformaciones se implementan en el código del proyecto.
-Los notebooks muestran la evidencia y analizan los resultados.
+La plantilla es un ejemplo pendiente, no un hallazgo que deba contarse automáticamente. No requiere un sistema adicional: empezar completando los campos esenciales.
