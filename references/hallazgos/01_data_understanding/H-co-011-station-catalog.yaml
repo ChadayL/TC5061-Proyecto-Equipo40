@@ -1,0 +1,24 @@
+id: H-co-011
+titulo: Estaciones ausentes del catálogo
+estado: resuelto
+autor: co
+responsable: co
+
+alcance: Junio-septiembre de 2026.
+
+hallazgo: >
+  Los IDs 405 y 407 aparecen en viajes, pero no en el catálogo.
+  ID 405: 3 salidas y 3 llegadas.
+  ID 407: 1957 salidas y 2120 llegadas.
+
+evidencia: >
+  Notebook 1.1-co-quality.ipynb, Inconsistency.
+
+accion: >
+  Conservar viajes e IDs. Investigar su correspondencia
+  antes de utilizar ubicación o capacidad.
+
+resolucion: >
+  Verificada la ausencia de los IDs 405 y 407 en el catálogo.
+  Se conservan sus viajes e identificadores; nombre, ubicación
+  y capacidad permanecen desconocidos.

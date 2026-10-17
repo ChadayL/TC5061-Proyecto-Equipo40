@@ -1,0 +1,23 @@
+id: H-co-010
+titulo: Calendario diario incompleto
+estado: en_revision
+autor: co
+responsable: co
+
+alcance: Junio-septiembre de 2026.
+
+hallazgo: >
+  La agregación omite días sin salidas.
+  De 471 estaciones, 103 tienen huecos internos sin actividad.
+
+evidencia: >
+  Notebook 1.2-co-target-analysis.ipynb.
+  Las fechas revisadas tienen salidas en otras estaciones.
+
+accion: >
+  Completar con cero los días sin salidas dentro del tramo
+  de actividad observado de cada estación, para exploración.
+
+resolucion: >
+  Tratamiento definido. Pendiente implementar y verificar
+  continuidad diaria y conservación del total de salidas.

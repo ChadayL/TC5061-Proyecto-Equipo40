@@ -24,6 +24,8 @@ FIGURES_DIR = REPORTS_DIR / "figures"
 
 # Archivos utilizados en la exploración inicial
 TRIP_FILES = (
+    "datos_abiertos_2026_06.csv",
+    "datos_abiertos_2026_07.csv",
     "datos_abiertos_2026_08.csv",
     "datos_abiertos_2026_09.csv",
 )
