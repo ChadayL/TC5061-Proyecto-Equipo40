@@ -4,21 +4,21 @@ estado: resuelto
 autor: co
 responsable: co
 
-alcance: Junio-septiembre de 2026.
+alcance: >
+  Viajes de la partición train (2024-10-01 a 2026-02-22)
+  y catálogo nomenclatura_2026_09.csv.
 
 hallazgo: >
-  Los IDs 405 y 407 aparecen en viajes, pero no en el catálogo.
-  ID 405: 3 salidas y 3 llegadas.
-  ID 407: 1957 salidas y 2120 llegadas.
+  Todos los Origen_Id y Destino_Id de train existen en el catálogo.
 
 evidencia: >
-  Notebook 1.1-co-quality.ipynb, Inconsistency.
+  Notebook 1.1-co-quality.ipynb, sección Inconsistency.
+  0 viajes con origen desconocido y 0 con destino desconocido.
 
 accion: >
-  Conservar viajes e IDs. Investigar su correspondencia
-  antes de utilizar ubicación o capacidad.
+  Ninguna en train. Repetir la comprobación al cargar
+  otras particiones antes de utilizar ubicación o capacidad.
 
 resolucion: >
-  Verificada la ausencia de los IDs 405 y 407 en el catálogo.
-  Se conservan sus viajes e identificadores; nombre, ubicación
-  y capacidad permanecen desconocidos.
+  Verificado que no hay estaciones de train ausentes del catálogo.
+  No se requiere tratamiento.

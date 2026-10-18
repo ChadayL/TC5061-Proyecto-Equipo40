@@ -5,26 +5,34 @@ autor: co
 responsable: co
 
 alcance: >
-  Agosto y septiembre de 2026, después de eliminar duplicados.
+  Partición train definida en config.py: 2024-10-01 a 2026-02-22,
+  después de eliminar duplicados (6,311,111 viajes).
 
 hallazgo: >
-  Se encontraron 23 viajes de dos usuarios con años de nacimiento
-  inválidos: 199 y 1420.
-  También se revisaron 277 viajes asociados a edades aproximadas
-  de 81 a 87 años, sin evidencia suficiente para invalidarlas.
+  Años claramente inválidos: 199 (164 viajes) y 200 (5 viajes),
+  de un usuario cada uno.
+  Edades extremas: 1920 (160 viajes de un usuario, 104 a 105 años)
+  y 2023 (526 viajes de 10 usuarios con IDs consecutivos, 1 a 2 años).
+  Ninguno de esos usuarios registra otro año de nacimiento.
+  También se revisaron 2,330 viajes con edades aproximadas de
+  81 a 87 años, sin evidencia suficiente para invalidarlas.
 
 evidencia: >
-  Notebook 1.1-co-quality.ipynb, sección Domain Constraints.
-  Año 199: 20 viajes. Año 1420: 3 viajes.
-  No se encontraron años alternativos para esos usuarios
-  en el periodo analizado.
+  Notebook 1.1-co-quality.ipynb, sección Domain Constraints:
+  conteos por año, edades mayores a 80 y menores a 16,
+  y años registrados por usuario.
 
 accion: >
   Definir e implementar una regla general para marcar años
   inválidos como faltantes, conservando los viajes.
   Conservar los años asociados a edades de 81 a 87 años.
+  Los 80 años son un umbral de revisión, no de invalidación:
+  una edad mayor a 80 no basta para descartar el año.
 
 resolucion: >
-  Implementado replace_invalid_birth_years en missing.py.
-  Convierte años fuera del rango a faltantes sin eliminar viajes.
-  Pendiente definir límites y validar.
+  Implementado replace_invalid_birth_years en
+  mibici/data_preparation/quality_fixes.py. Convierte a faltantes
+  los años fuera de MIN_AGE y MAX_AGE (config.py) sin eliminar viajes.
+  Con los valores actuales (10 y 100) convierte 855 valores en train:
+  2023, 199, 1920 y 200. Pendiente aprobar los límites; mientras tanto,
+  los notebooks de DU no aplican esta función.
