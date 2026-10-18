@@ -13,7 +13,7 @@ def configure_tracking():
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     return mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 
-def log_evaluation(run_name, params, metrics, tags):
+def log_evaluation(run_name, params, metrics, tags, artifacts=()):
     experiment = configure_tracking()
     with mlflow.start_run(
         experiment_id=experiment.experiment_id,
@@ -22,6 +22,8 @@ def log_evaluation(run_name, params, metrics, tags):
     ) as run:
         mlflow.log_params(params)
         mlflow.log_metrics(metrics)
+        for path in artifacts:
+            mlflow.log_artifact(str(path), artifact_path="resultados")
         return run.info.run_id
     
 
