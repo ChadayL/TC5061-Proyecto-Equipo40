@@ -21,21 +21,39 @@ MODELS_DIR = PROJ_ROOT / "models"
 REPORTS_DIR = PROJ_ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
 
+# Periodo completo del proyecto, ambos extremos incluidos.
+DATA_START = "2024-10-01"
+DATA_END = "2026-09-30"
 
-# Archivos utilizados en la exploración inicial
-TRIP_FILES = (
-    "datos_abiertos_2026_06.csv",
-    "datos_abiertos_2026_07.csv",
-    "datos_abiertos_2026_08.csv",
-    "datos_abiertos_2026_09.csv",
-)
-
-STATIONS_FILE = "nomenclatura_2026_09.csv"
-
+# Partición temporal de P1, por días completos.
+TRAIN_RATIO = 0.70
+VALIDATION_RATIO = 0.15
+TEST_RATIO = 0.15
 
 #Edades mínimas y máximas para el año de nacimiento
 MIN_AGE = 10
 MAX_AGE = 100
+
+
+def monthly_trip_files(start: str, end: str) -> tuple[str, ...]:
+    """Genera los nombres mensuales del periodo configurado."""
+    start_year, start_month = map(int, start.split("-")[:2])
+    end_year, end_month = map(int, end.split("-")[:2])
+
+    first_month = start_year * 12 + start_month - 1
+    last_month = end_year * 12 + end_month - 1
+
+    if first_month > last_month:
+        raise ValueError("El inicio debe ser anterior al fin.")
+
+    return tuple(
+        f"datos_abiertos_{month // 12}_{month % 12 + 1:02d}.csv"
+        for month in range(first_month, last_month + 1)
+    )
+    
+TRIP_FILES = monthly_trip_files(DATA_START, DATA_END)    
+STATIONS_FILE = "nomenclatura_2026_09.csv"
+
 
 # If tqdm is installed, configure loguru with tqdm.write
 # https://github.com/Delgan/loguru/issues/135

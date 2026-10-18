@@ -1,6 +1,6 @@
 id: H-co-010
 titulo: Calendario diario incompleto
-estado: en_revision
+estado: resuelto
 autor: co
 responsable: co
 
@@ -19,5 +19,6 @@ accion: >
   de actividad observado de cada estación, para exploración.
 
 resolucion: >
-  Tratamiento definido. Pendiente implementar y verificar
-  continuidad diaria y conservación del total de salidas.
+  Implementado build_daily_departures en modeling/p1.py.
+  Calendario exploratorio continuo, con ceros internos y
+  conservación del total de salidas.
