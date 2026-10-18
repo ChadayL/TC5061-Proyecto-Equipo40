@@ -51,10 +51,24 @@ def monthly_trip_files(start: str, end: str) -> tuple[str, ...]:
         for month in range(first_month, last_month + 1)
     )
     
-TRIP_FILES = monthly_trip_files(DATA_START, DATA_END)    
+TRIP_FILES = monthly_trip_files(DATA_START, DATA_END)  
+
 STATIONS_FILE = "nomenclatura_2026_09.csv"
 
+CSV_ENCODINGS = {
+    "datos_abiertos_2024_10.csv": "cp1252",
+    "datos_abiertos_2024_11.csv": "cp1252",
+    "datos_abiertos_2024_12.csv": "cp1252",
+    "datos_abiertos_2025_01.csv": "cp1252",
+    "datos_abiertos_2025_02.csv": "cp1252",
+    "datos_abiertos_2025_07.csv": "cp1252",
+    "datos_abiertos_2026_01.csv": "cp1252",
+}
+DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
+CSV_DATE_FORMATS = {
+    "datos_abiertos_2024_10.csv": "%d/%m/%Y %H:%M",
+}
 # If tqdm is installed, configure loguru with tqdm.write
 # https://github.com/Delgan/loguru/issues/135
 try:

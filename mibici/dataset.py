@@ -1,3 +1,4 @@
+from fileinput import filename
 import math
 
 import pandas as pd
@@ -13,6 +14,8 @@ from mibici.config import (
     TRAIN_RATIO,
     TRIP_FILES,
     VALIDATION_RATIO,
+    CSV_ENCODINGS,
+    CSV_DATE_FORMATS,
 )
 
 app = typer.Typer()
@@ -32,16 +35,12 @@ def check_required_files():
     filenames = list(TRIP_FILES) + [STATIONS_FILE]
 
     missing_files = [
-        filename
-        for filename in filenames
-        if not (RAW_DATA_DIR / filename).is_file()
+        filename for filename in filenames if not (RAW_DATA_DIR / filename).is_file()
     ]
 
     if missing_files:
         details = "\n".join(f"  - {name}" for name in missing_files)
-        raise FileNotFoundError(
-            f"Faltan archivos en {RAW_DATA_DIR}:\n{details}"
-        )
+        raise FileNotFoundError(f"Faltan archivos en {RAW_DATA_DIR}:\n{details}")
 
 
 def get_split_periods():
@@ -84,17 +83,11 @@ def load_raw(
     nrows: int | None = None,
     split: str = "train",
 ) -> dict[str, pd.DataFrame]:
-    """Carga exclusivamente la partición solicitada.
-
-    nrows limita los viajes por archivo después de filtrar fechas.
-    El catálogo se carga completo.
-    """
+    
     periods = get_split_periods()
 
     if split not in periods:
-        raise ValueError(
-            f"Partición desconocida: {split!r}. Opciones: {list(periods)}"
-        )
+        raise ValueError(f"Partición desconocida: {split!r}. Opciones: {list(periods)}")
 
     if nrows is not None and nrows < 1:
         raise ValueError("nrows debe ser positivo o None.")
@@ -122,18 +115,24 @@ def load_raw(
 
     for filename in selected_files:
         loaded_rows = 0
-
+        encoding = CSV_ENCODINGS.get(filename, "utf-8-sig")
         with pd.read_csv(
             RAW_DATA_DIR / filename,
-            encoding="utf-8",
+            encoding=encoding,
             chunksize=100_000,
         ) as reader:
             for chunk in reader:
                 # Interpretamos la fecha para separar, sin reemplazar
                 # todavía la columna original de los datos raw.
+
+                date_format = CSV_DATE_FORMATS.get(
+                    filename,
+                    "%Y-%m-%d %H:%M:%S",
+                )
+
                 start_dates = pd.to_datetime(
                     chunk["Inicio_del_viaje"],
-                    format="%Y-%m-%d %H:%M:%S",
+                    format=date_format,
                     errors="raise",
                 )
 
@@ -144,8 +143,7 @@ def load_raw(
                     )
 
                 selected = chunk.loc[
-                    start_dates.ge(start)
-                    & start_dates.lt(end_exclusive)
+                    start_dates.ge(start) & start_dates.lt(end_exclusive)
                 ]
 
                 if nrows is not None:
@@ -159,9 +157,7 @@ def load_raw(
                     break
 
     if not tables:
-        raise ValueError(
-            f"No se encontraron viajes para la partición {split!r}."
-        )
+        raise ValueError(f"No se encontraron viajes para la partición {split!r}.")
 
     trips = pd.concat(tables, ignore_index=True)
     stations = load_csv(STATIONS_FILE)
