@@ -47,6 +47,7 @@ MODEL_PARAMS = {
 
 RESULT_COLUMNS = [
     "fecha",
+    "fecha_objetivo",
     "estacion_id",
     "salidas",
     "llegadas",
@@ -58,26 +59,71 @@ RESULT_COLUMNS = [
 ]
 
 
-def build_split_dataset(split, start, end_exclusive):
-    """Construye P2 con los viajes de una partición."""
-    data = load_stage("common", split=split)
-    dataset = build_p2_features(data["viajes"], data["estaciones"])
+# balance_lag_7 y presion_promedio_7d miran hasta 7 días antes del día evaluado.
+CONTEXT_DAYS = 7
 
-    # Solo días cuyo objetivo (el día siguiente) también pertenece a la partición.
-    # Excluye además el día extra que generan llegadas posteriores al corte.
-    last_day = end_exclusive - pd.Timedelta(days=1)
 
-    return dataset.loc[dataset["fecha"].ge(start) & dataset["fecha"].lt(last_day)].copy()
+def build_period_dataset(trips, stations, start, end_exclusive):
+    """Construye P2 y conserva las filas cuya fecha objetivo pertenece al periodo.
+
+    Cada fila predice al cierre de `fecha` el riesgo de `fecha_objetivo` (= fecha + 1).
+    """
+    dataset = build_p2_features(trips, stations)
+    dataset["fecha_objetivo"] = dataset["fecha"] + pd.Timedelta(days=1)
+
+    in_period = dataset["fecha_objetivo"].ge(start) & dataset["fecha_objetivo"].lt(end_exclusive)
+
+    return dataset.loc[in_period].copy()
+
+
+def summarize_dates(dataset, name):
+    """Fechas de predicción y objetivo realmente evaluadas."""
+    return {
+        f"{name}_first_prediction_date": str(dataset["fecha"].min().date()),
+        f"{name}_last_prediction_date": str(dataset["fecha"].max().date()),
+        f"{name}_first_target_date": str(dataset["fecha_objetivo"].min().date()),
+        f"{name}_last_target_date": str(dataset["fecha_objetivo"].max().date()),
+        f"{name}_target_days": int(dataset["fecha_objetivo"].nunique()),
+    }
 
 
 def prepare_p2_data():
-    """Construye train y validation de P2 por separado."""
+    """Construye train y validation de P2 asignando cada fila por su fecha objetivo."""
     periods = get_split_periods()
+    validation_start, validation_end = periods["validation"]
+
+    train_data = load_stage("common", split="train")
+    validation_data = load_stage("common", split="validation")
+
+    train = build_period_dataset(
+        train_data["viajes"], train_data["estaciones"], *periods["train"]
+    )
+
+    # La primera fila de validation predice validation_start al cierre del día anterior;
+    # sus rezagos llegan hasta CONTEXT_DAYS días antes de esa fecha de predicción.
+    first_needed_day = validation_start - pd.Timedelta(days=1 + CONTEXT_DAYS)
+
+    # Contexto por fecha de fin: incluye toda llegada desde first_needed_day,
+    # sin suponer una duración máxima de los viajes.
+    train_trips = train_data["viajes"]
+    context = train_trips.loc[train_trips["Fin_del_viaje"].ge(first_needed_day)]
+
+    validation = build_period_dataset(
+        pd.concat([context, validation_data["viajes"]], ignore_index=True),
+        validation_data["estaciones"],
+        validation_start,
+        validation_end,
+    )
 
     return {
-        "train": build_split_dataset("train", *periods["train"]),
-        "validation": build_split_dataset("validation", *periods["validation"]),
+        "train": train,
+        "validation": validation,
         "periods": periods,
+        "summary": {
+            "validation_context_trips": len(context),
+            **summarize_dates(train, "train"),
+            **summarize_dates(validation, "validation"),
+        },
     }
 
 

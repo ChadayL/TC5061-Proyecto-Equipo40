@@ -98,37 +98,42 @@ def run_p2(model_name: str, **_options):
     datasets = p2.prepare_p2_data()
 
     train = datasets["train"]
-    test = datasets["test"]
+    validation = datasets["validation"]
+    periods = datasets["periods"]
 
-    X_test = test[p2.FEATURES]
-    y_test = test[p2.TARGET]
+    X_validation = validation[p2.FEATURES]
+    y_validation = validation[p2.TARGET]
 
     model = p2.build_p2_model()
     model.fit(train[p2.FEATURES], train[p2.TARGET])
 
-    predictions = model.predict(X_test)
-    probabilities = model.predict_proba(X_test)[:, 1]
-    baseline = p2.predict_baseline(test)
+    predictions = model.predict(X_validation)
+    probabilities = model.predict_proba(X_validation)[:, 1]
+    baseline = p2.predict_baseline(validation)
 
-    baseline_metrics = p2.calculate_metrics(y_test, baseline)
+    baseline_metrics = p2.calculate_metrics(y_validation, baseline)
 
     metrics = {
-        **p2.calculate_metrics(y_test, predictions, probabilities),
+        **p2.calculate_metrics(y_validation, predictions, probabilities),
         **{f"baseline_{name}": value for name, value in baseline_metrics.items()},
-        **p2.confusion_counts(y_test, predictions),
+        **p2.confusion_counts(y_validation, predictions),
     }
 
     params = {
         "model": model_name,
         **p2.MODEL_PARAMS,
-        "train_end": p2.TRAIN_END,
+        "train_start": str(periods["train"][0].date()),
+        "train_end_exclusive": str(periods["train"][1].date()),
+        "validation_start": str(periods["validation"][0].date()),
+        "validation_end_exclusive": str(periods["validation"][1].date()),
         "train_rows": len(train),
-        "test_rows": len(test),
-        "total_rows": len(datasets["dataset"]),
+        "validation_rows": len(validation),
+        "validation_context_days": p2.CONTEXT_DAYS,
         "features": ",".join(p2.FEATURES),
+        **datasets["summary"],
     }
 
-    results = p2.build_results(test, baseline, predictions, probabilities)
+    results = p2.build_results(validation, baseline, predictions, probabilities)
 
     with TemporaryDirectory() as tmp:
         results_path = Path(tmp) / "predicciones_p2.csv"
@@ -152,7 +157,9 @@ def run_p3(model_name: str, **_options):
     if model_name != "kmeans":
         raise ValueError(f"Modelo no disponible para P3: {model_name!r}")
 
-    dataset = p3.prepare_p3_data()
+    prepared = p3.prepare_p3_data()
+    dataset = prepared["dataset"]
+    start, end_exclusive = prepared["period"]
 
     _, X_scaled = p3.scale_features(dataset)
 
@@ -169,6 +176,8 @@ def run_p3(model_name: str, **_options):
         "n_clusters": best_k,
         "random_state": p3.RANDOM_STATE,
         "k_values": ",".join(map(str, p3.K_VALUES)),
+        "train_start": str(start.date()),
+        "train_end_exclusive": str(end_exclusive.date()),
         "stations": len(dataset),
         "features": ",".join(p3.FEATURES),
     }
