@@ -1,4 +1,3 @@
-from fileinput import filename
 import math
 
 import pandas as pd
@@ -16,6 +15,7 @@ from mibici.config import (
     VALIDATION_RATIO,
     CSV_ENCODINGS,
     CSV_DATE_FORMATS,
+    DEFAULT_DATE_FORMAT,
 )
 
 app = typer.Typer()
@@ -112,9 +112,13 @@ def load_raw(
     ]
 
     tables = []
+    # nrows limita el total de la partición, no cada archivo.
+    loaded_rows = 0
 
     for filename in selected_files:
-        loaded_rows = 0
+        if nrows is not None and loaded_rows >= nrows:
+            break
+
         encoding = CSV_ENCODINGS.get(filename, "utf-8-sig")
         with pd.read_csv(
             RAW_DATA_DIR / filename,
@@ -125,10 +129,7 @@ def load_raw(
                 # Interpretamos la fecha para separar, sin reemplazar
                 # todavía la columna original de los datos raw.
 
-                date_format = CSV_DATE_FORMATS.get(
-                    filename,
-                    "%Y-%m-%d %H:%M:%S",
-                )
+                date_format = CSV_DATE_FORMATS.get(filename, DEFAULT_DATE_FORMAT)
 
                 start_dates = pd.to_datetime(
                     chunk["Inicio_del_viaje"],

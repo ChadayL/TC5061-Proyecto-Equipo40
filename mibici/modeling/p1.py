@@ -20,7 +20,72 @@ NUMERIC_FEATURES = [
 
 TARGET = "departures"
 
+def build_training_daily_data(trips, start, end_exclusive):
+    """Cuenta salidas desde la primera actividad hasta el corte."""
+    activity = pd.concat(
+        [
+            trips[["Origen_Id", "Inicio_del_viaje"]].rename(
+                columns={
+                    "Origen_Id": "station_id",
+                    "Inicio_del_viaje": "date",
+                }
+            ),
+            trips[["Destino_Id", "Fin_del_viaje"]].rename(
+                columns={
+                    "Destino_Id": "station_id",
+                    "Fin_del_viaje": "date",
+                }
+            ),
+        ],
+        ignore_index=True,
+    )
 
+    activity["date"] = activity["date"].dt.normalize()
+
+    activity = activity.loc[
+        activity["date"].ge(start)
+        & activity["date"].lt(end_exclusive)
+    ]
+
+    first_activity = activity.groupby("station_id")["date"].min()
+
+    calendar = (
+        first_activity.apply(
+            lambda first_date: pd.date_range(
+                first_date,
+                end_exclusive - pd.Timedelta(days=1),
+                freq="D",
+            )
+        )
+        .rename("date")
+        .explode()
+        .reset_index()
+    )
+    calendar["date"] = pd.to_datetime(calendar["date"])
+
+    departure_counts = (
+        trips.assign(date=trips["Inicio_del_viaje"].dt.normalize())
+        .groupby(["Origen_Id", "date"])
+        .size()
+        .rename("departures")
+        .reset_index()
+        .rename(columns={"Origen_Id": "station_id"})
+    )
+
+    result = calendar.merge(
+        departure_counts,
+        on=["station_id", "date"],
+        how="left",
+        validate="one_to_one",
+    )
+
+    result["departures"] = (
+        result["departures"].fillna(0).astype("int64")
+    )
+
+    return result.sort_values(
+        ["station_id", "date"]
+    ).reset_index(drop=True)
 
 def build_daily_departures(trips):
     """Construye el calendario exploratorio diario de P1."""
@@ -93,6 +158,10 @@ def build_daily_departures(trips):
         ["station_id", "date"]
     ).reset_index(drop=True)
 
+def predict_departures(model, features):
+    """Predice salidas y limita los resultados negativos a cero."""
+    predictions = model.predict(features)
+    return predictions.clip(min=0)
 
 def load_p1_data():
     data = load_stage("common")

@@ -5,16 +5,17 @@ autor: co
 responsable: co
 
 alcance: >
-  Archivos completos de viajes de agosto y septiembre de 2026.
+  Partición train definida en config.py: 2024-10-01 a 2026-02-22
+  (17 archivos mensuales, 6,311,111 viajes).
 
 hallazgo: >
-  Genero se carga como object. Contiene las etiquetas M y F,
-  y 5627 valores faltantes en los datos analizados.
+  Genero se carga como object. Contiene las etiquetas
+  M (4,528,612) y F (1,728,558), y 53,941 valores faltantes.
 
 evidencia: >
-  Notebook 1.0-co-structure.ipynb.
-  Se probó la conversión a string conservando las etiquetas,
-  sus conteos y los 5627 faltantes.
+  Notebook 1.0-co-structure.ipynb, celdas 6 y 7.
+  La conversión a string conserva las etiquetas,
+  sus conteos y los 53,941 faltantes.
 
 accion: >
   Incorporar la conversión a string en data_preparation/structure.py,
@@ -23,5 +24,6 @@ accion: >
 resolucion: >
   Conversión implementada en convert_gender de
   mibici/data_preparation/structure.py.
-  Verificado tipo string y conservación de las etiquetas
-  y los 5627 faltantes mediante load_stage("structure").
+  Verificado mediante load_stage("structure") sobre train:
+  tipo string, mismas etiquetas y 53,941 faltantes conservados.
+  Evidencia de verificación: 2.0-co-structure.ipynb.

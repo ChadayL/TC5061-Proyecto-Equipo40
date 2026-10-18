@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import os
 from dotenv import load_dotenv
 from loguru import logger
 
@@ -69,6 +69,20 @@ DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 CSV_DATE_FORMATS = {
     "datos_abiertos_2024_10.csv": "%d/%m/%Y %H:%M",
 }
+
+import os
+
+MLFLOW_TRACKING_URI = os.getenv(
+    "MLFLOW_TRACKING_URI",
+    "http://mlflow:5000",
+)
+
+MLFLOW_EXPERIMENT_NAME = os.getenv(
+    "MLFLOW_EXPERIMENT_NAME",
+    "TC5061-Proyecto-Equipo40",
+)
+
+
 # If tqdm is installed, configure loguru with tqdm.write
 # https://github.com/Delgan/loguru/issues/135
 try:
