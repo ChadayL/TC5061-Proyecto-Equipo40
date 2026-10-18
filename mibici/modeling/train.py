@@ -4,6 +4,7 @@ from tempfile import TemporaryDirectory
 import typer
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
+from mibici.dataset import get_data_version
 from mibici.modeling import p2, p3
 from mibici.modeling.p1 import (
     CATEGORICAL_FEATURES,
@@ -52,6 +53,7 @@ def run_p1(model_name: str, fit_intercept: bool):
     }
 
     params = {
+        "data_version": get_data_version(),
         "model": "linear_regression",
         "fit_intercept": fit_intercept,
         "prediction_floor": 0,
@@ -120,6 +122,7 @@ def run_p2(model_name: str, **_options):
     }
 
     params = {
+        "data_version": get_data_version(),
         "model": model_name,
         **p2.MODEL_PARAMS,
         "train_start": str(periods["train"][0].date()),
@@ -172,6 +175,7 @@ def run_p3(model_name: str, **_options):
     profile, sizes = p3.cluster_profile(dataset)
 
     params = {
+        "data_version": get_data_version(),
         "model": model_name,
         "n_clusters": best_k,
         "random_state": p3.RANDOM_STATE,

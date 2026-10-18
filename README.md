@@ -19,16 +19,22 @@ uv sync --locked
 
 La versión de Python (3.10) se define en `pyproject.toml` y las dependencias en `uv.lock`.
 
-## Preparar los datos
+## Ingesta de datos
 
-Fuente: [datos abiertos de MiBici](https://mibici.net/es/datos-abiertos/).
+Fuente: [datos abiertos de MiBici](https://mibici.net/es/datos-abiertos/). Un solo comando, sin pasos manuales:
 
-Colocar sin modificar dentro de `data/raw/`:
+```bash
+uv run python -m mibici.dataset ingest
+```
 
-- Los viajes mensuales de octubre de 2024 a septiembre de 2026: `datos_abiertos_2024_10.csv` … `datos_abiertos_2026_09.csv` (24 archivos).
-- El catálogo de estaciones `nomenclatura_2026_09.csv`.
+1. **Descarga** a `data/raw/` los 24 meses de viajes (`datos_abiertos_2024_10.csv` … `datos_abiertos_2026_09.csv`) y la nomenclatura `nomenclatura_2026_09.csv`. Omite los archivos que ya existen.
+2. **Normaliza** cada archivo: su codificación (UTF-8 o cp1252), nombres de columna sin espacios y fechas en sus dos formatos (`dd/mm/aaaa HH:MM` en octubre de 2024, `aaaa-mm-dd HH:MM:SS` en el resto) a `datetime`.
+3. **Guarda** un Parquet por mes en `data/interim/viajes/` y el catálogo en `data/interim/estaciones.parquet`.
+4. **Versiona** los datos en [`references/data_manifest.json`](references/data_manifest.json), que sí se sube a Git: número de registros y sha256 de cada archivo, más una `data_version` que se registra en cada run de MLflow. Si MiBici cambia algún archivo, cambian su hash y la versión, y `git diff` del manifiesto lo muestra.
 
-El periodo (`DATA_START`, `DATA_END`), la codificación y el formato de fecha de cada archivo se configuran en `mibici/config.py`. Si falta algún archivo, la carga indica cuáles.
+Resultado actual: 24 meses, 9,043,925 viajes, 484 estaciones, versión `9ca985ed8716`.
+
+El periodo (`DATA_START`, `DATA_END`), las URLs (`SOURCE_FOLDERS`), la codificación y el formato de fecha de cada archivo se configuran en `mibici/config.py`.
 
 ### Particiones
 
@@ -45,10 +51,10 @@ Los viajes se asignan por `Inicio_del_viaje`. La carga usa `train` por defecto. 
 ## Comprobar la lectura
 
 ```bash
-uv run python -m mibici.dataset
+uv run python -m mibici.dataset check
 ```
 
-Carga una muestra de cinco viajes de train y el catálogo completo (484 estaciones). Opciones: `--split` y `--nrows`.
+Carga una muestra de cinco viajes de train, el catálogo completo (484 estaciones) y muestra la versión de los datos. Opciones: `--split` y `--nrows`.
 
 ## Trabajar en notebooks
 
@@ -98,7 +104,7 @@ Cada ejecución registra parámetros, métricas y artefactos en MLflow. El servi
 | Ruta | Responsabilidad |
 |---|---|
 | `mibici/config.py` | Rutas, periodo, particiones, archivos y MLflow. |
-| `mibici/dataset.py` | Lectura de archivos y particiones temporales. |
+| `mibici/dataset.py` | Ingesta (descarga, Parquet y manifiesto), particiones temporales y carga. |
 | `mibici/pipeline.py` | Orden de stages y `load_stage()`. |
 | `mibici/data_preparation/` | Funciones de preparación, un `run()` por etapa, encoder y scaler. |
 | `mibici/features.py` | Construcción de variables por pregunta. |
@@ -121,7 +127,7 @@ Excluir del historial de Git los datos, modelos serializados, `.env`, `mlruns/`,
 
 ## Estado
 
-- **Implementado:** lectura por partición, stages `structure` y `quality_fixes`, P1 completo, P2 y P3 integrados en el CLI con registro en MLflow.
+- **Implementado:** ingesta reproducible (descarga, Parquet y manifiesto versionado), lectura por partición, stages `structure` y `quality_fixes`, P1 completo, P2 y P3 integrados en el CLI con registro en MLflow.
 - **Pendiente en P2:** fórmula y umbral de riesgo, y la inclusión de estaciones sin actividad.
 - **Pendiente en P3:** normalizar por días activos y definir el uso del catálogo de estaciones.
-- **Otros:** límites de edad (H-co-006), elegibilidad de estaciones en el calendario de P1 (H-co-010), pruebas de `features.py`, persistencia en Parquet y descarga automatizada.
+- **Otros:** límites de edad (H-co-006), elegibilidad de estaciones en el calendario de P1 (H-co-010).

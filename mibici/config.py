@@ -74,7 +74,45 @@ CSV_DATE_FORMATS = {
     "datos_abiertos_2024_10.csv": "%d/%m/%Y %H:%M",
 }
 
-import os
+# Fuente: https://mibici.net/es/datos-abiertos/
+# Cada archivo vive en una carpeta numerada del portal que no sigue un patrón;
+# la URL es SOURCE_BASE_URL/<carpeta>/<archivo>.
+SOURCE_BASE_URL = "https://mibici.net/site/assets/files"
+
+SOURCE_FOLDERS = {
+    "datos_abiertos_2024_10.csv": 91758,
+    "datos_abiertos_2024_11.csv": 93516,
+    "datos_abiertos_2024_12.csv": 94962,
+    "datos_abiertos_2025_01.csv": 97653,
+    "datos_abiertos_2025_02.csv": 99879,
+    "datos_abiertos_2025_03.csv": 101986,
+    "datos_abiertos_2025_04.csv": 103813,
+    "datos_abiertos_2025_05.csv": 105513,
+    "datos_abiertos_2025_06.csv": 107088,
+    "datos_abiertos_2025_07.csv": 108898,
+    "datos_abiertos_2025_08.csv": 111021,
+    "datos_abiertos_2025_09.csv": 113216,
+    "datos_abiertos_2025_10.csv": 115104,
+    "datos_abiertos_2025_11.csv": 116773,
+    "datos_abiertos_2025_12.csv": 118153,
+    "datos_abiertos_2026_01.csv": 120163,
+    "datos_abiertos_2026_02.csv": 121761,
+    "datos_abiertos_2026_03.csv": 123236,
+    "datos_abiertos_2026_04.csv": 124927,
+    "datos_abiertos_2026_05.csv": 125943,
+    "datos_abiertos_2026_06.csv": 127734,
+    "datos_abiertos_2026_07.csv": 129006,
+    "datos_abiertos_2026_08.csv": 130362,
+    "datos_abiertos_2026_09.csv": 131825,
+    "nomenclatura_2026_09.csv": 1118,
+}
+
+# Salida de la ingesta: un Parquet por mes y el catálogo, ya normalizados.
+TRIPS_PARQUET_DIR = INTERIM_DATA_DIR / "viajes"
+STATIONS_PARQUET = INTERIM_DATA_DIR / "estaciones.parquet"
+
+# Manifiesto versionado en Git: filas y sha256 de cada archivo descargado.
+DATA_MANIFEST = PROJ_ROOT / "references" / "data_manifest.json"
 
 MLFLOW_TRACKING_URI = os.getenv(
     "MLFLOW_TRACKING_URI",
