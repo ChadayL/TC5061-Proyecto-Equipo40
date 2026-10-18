@@ -5,26 +5,22 @@ autor: co
 responsable: co
 
 alcance: >
-  Archivos completos de agosto y septiembre de 2026.
+  Partición train definida en config.py: 2024-10-01 a 2026-02-22
+  (17 archivos mensuales, 6,311,111 viajes), después de structure.
 
 hallazgo: >
-  Se encontraron 758 filas duplicadas adicionales, con los
-  ocho campos iguales, en el archivo de septiembre.
-  Agosto no presenta duplicados.
+  No se encontraron filas duplicadas ni Viaje_Id repetidos.
 
 evidencia: >
-  Notebook 1.1-co-quality.ipynb.
-  Agosto: 393524 filas y 0 duplicados.
-  Septiembre: 490056 filas y 758 duplicados.
-  Conjunto combinado: 883580 filas y 758 duplicados.
+  Notebook 1.1-co-quality.ipynb, sección Duplicates.
+  0 filas duplicadas y 0 IDs repetidos en viajes y estaciones.
 
 accion: >
-  Eliminar copias exactas con drop_duplicates, conservando
-  una fila de cada registro. Se esperan 882822 filas.
-  Mantener intactos los CSV originales.
+  Conservar remove_duplicate_trips en la etapa quality_fixes como
+  salvaguarda: elimina copias exactas conservando una fila de cada
+  registro, sin modificar los CSV originales.
 
 resolucion: >
-  Limpieza integrada en remove_duplicate_trips de
-  mibici/data_preparation/duplicates.py.
-  Verificada mediante load_stage("duplicates"):
-  882822 filas, sin duplicados exactos ni IDs repetidos.
+  remove_duplicate_trips está en mibici/data_preparation/quality_fixes.py
+  y se ejecuta en load_stage("quality_fixes").
+  Verificado en train: conserva las 6,311,111 filas.

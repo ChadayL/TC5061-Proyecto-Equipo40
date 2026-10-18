@@ -5,15 +5,15 @@ autor: co
 responsable: co
 
 alcance: >
-  Archivos completos de viajes de agosto y septiembre de 2026.
+  Catálogo nomenclatura_2026_09.csv (484 estaciones),
+  con fecha propia de septiembre de 2026.
 
 hallazgo: >
-  La columna name se carga como object.
+  La columna name se carga como object y no tiene faltantes.
   Se propone string para declarar explícitamente que contiene texto.
 
 evidencia: >
-  Comparación de tipos del catálogo en el notebook
-  1.0-co-structure.ipynb.
+  Notebook 1.0-co-structure.ipynb, celdas 9 y 10.
 
 accion: >
   Incorporar la conversión de name a string en
@@ -22,5 +22,6 @@ accion: >
 resolucion: >
   Conversión implementada en convert_station_name de
   mibici/data_preparation/structure.py.
-  Verificado tipo string y conservación de los nombres
-  y faltantes mediante load_stage("structure").
+  Verificado mediante load_stage("structure"): tipo string,
+  484 nombres y 0 faltantes antes y después de la conversión.
+  Evidencia de verificación: 2.0-co-structure.ipynb.

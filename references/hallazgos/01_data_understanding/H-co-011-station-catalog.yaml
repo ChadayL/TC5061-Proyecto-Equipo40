@@ -1,0 +1,24 @@
+id: H-co-011
+titulo: Estaciones ausentes del catálogo
+estado: resuelto
+autor: co
+responsable: co
+
+alcance: >
+  Viajes de la partición train (2024-10-01 a 2026-02-22)
+  y catálogo nomenclatura_2026_09.csv.
+
+hallazgo: >
+  Todos los Origen_Id y Destino_Id de train existen en el catálogo.
+
+evidencia: >
+  Notebook 1.1-co-quality.ipynb, sección Inconsistency.
+  0 viajes con origen desconocido y 0 con destino desconocido.
+
+accion: >
+  Ninguna en train. Repetir la comprobación al cargar
+  otras particiones antes de utilizar ubicación o capacidad.
+
+resolucion: >
+  Verificado que no hay estaciones de train ausentes del catálogo.
+  No se requiere tratamiento.

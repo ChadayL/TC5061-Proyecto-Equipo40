@@ -1,0 +1,50 @@
+id: H-co-010
+titulo: Calendario diario incompleto
+estado: en_revision
+autor: co
+responsable: co
+
+alcance: >
+  Actual: partición train definida en config.py, 2024-10-01 a 2026-02-22
+  (510 días, 371 estaciones con actividad), etapa quality_fixes.
+  Histórico: el hallazgo se detectó con junio-septiembre de 2026,
+  periodo que ahora pertenece a test; sus conteos no se reutilizan.
+
+hallazgo: >
+  La agregación diaria omite días sin salidas.
+  En train, 67 de 371 estaciones tienen días sin salidas ni llegadas
+  dentro de su tramo de actividad observado (294 estación-días).
+  Las fechas con más estaciones sin actividad son el 25 de diciembre
+  de 2024 (14 estaciones) y de 2025 (11), el 1 de enero de 2026 (7)
+  y del 13 al 16 de febrero de 2025 (7 a 8 por día). No se atribuye
+  una causa a estos huecos.
+  Además, el calendario de modelado (build_training_daily_data) prolonga
+  las 371 estaciones hasta el último día de train: para 18 estaciones
+  cuya última actividad es anterior agrega 788 filas con cero salidas.
+  Tres dejaron de tener actividad mucho antes del corte:
+  180 (última actividad 2025-01-28, 390 días antes),
+  240 (2025-06-06, 261 días) y 20 (2025-10-24, 121 días).
+  Las otras 15 terminan uno o dos días antes del corte.
+
+evidencia: >
+  Notebook 1.2-co-target-analysis.ipynb, P1 — Regression:
+  tramos de actividad por estación, huecos internos por fecha,
+  sección Calendario de modelado y comprobaciones de que las tablas
+  no están vacías y sus fechas pertenecen a train. En todas las fechas
+  con huecos hubo salidas en otras estaciones (mínimo 2,782,
+  el 25 de diciembre de 2024).
+
+accion: >
+  Completar con cero los días sin salidas dentro del tramo
+  de actividad observado de cada estación, para exploración.
+  Revisar la elegibilidad de las estaciones que dejaron de tener
+  actividad antes del corte (180, 240 y 20) usando únicamente
+  información anterior a validación, antes de entrenar.
+
+resolucion: >
+  Calendario exploratorio: implementado build_daily_departures en
+  modeling/p1.py. Verificado en train con load_p1_data: 186,753
+  estación-días de 371 estaciones, fechas continuas por estación,
+  sin duplicados, dentro de 2024-10-01 a 2026-02-22 y con el mismo
+  total de salidas que los viajes (0.30 % de estación-días con cero salidas).
+  Pendiente: decidir la elegibilidad en el calendario de modelado.

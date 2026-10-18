@@ -4,18 +4,27 @@ estado: pendiente
 autor: co
 responsable: co
 
-alcance: Agosto-septiembre de 2026, sin duplicados.
+alcance: >
+  Partición train definida en config.py: 2024-10-01 a 2026-02-22,
+  sin duplicados (6,311,111 viajes).
 
 hallazgo: >
-  258 viajes tienen inicio y fin iguales:
-  86 en la misma estación y 172 entre estaciones distintas.
+  12,636 viajes tienen inicio y fin iguales:
+  9,221 en la misma estación y 3,415 entre estaciones distintas.
+  7,732 son de octubre de 2024, cuyas fechas no incluyen segundos,
+  por lo que cualquier viaje de menos de un minuto aparece con
+  duración cero. Febrero de 2026 tiene 1,519 (0.56 %), concentrados
+  entre el 12 y el 21 de febrero y mayormente en la misma estación.
+  Los demás meses están entre 0.04 % y 0.10 %.
 
 evidencia: >
-  Notebook 1.1-co-quality.ipynb, Temporal Relationships.
-  Máximo observado: 14 casos por día y 4 por par de estaciones.
+  Notebook 1.1-co-quality.ipynb, sección Temporal Relationships:
+  conteo de duraciones cero, desglose por mes, por día
+  y por par de estaciones.
 
 accion: >
-  Definir si los viajes de duración cero representan demanda.
+  Definir si los viajes de duración cero representan demanda,
+  considerando la diferencia de resolución de octubre de 2024.
   Conservar los registros hasta tomar esa decisión.
 
 resolucion: null

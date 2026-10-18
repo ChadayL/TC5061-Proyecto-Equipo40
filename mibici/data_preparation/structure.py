@@ -23,14 +23,34 @@ def convert_dates(trips):
     trips = trips.copy()
 
     for column in ["Inicio_del_viaje", "Fin_del_viaje"]:
-        trips[column] = pd.to_datetime(
-            trips[column],
+        # Permite recibir una columna ya convertida.
+        if pd.api.types.is_datetime64_any_dtype(trips[column]):
+            continue
+
+        original = trips[column].astype("string")
+        slash_dates = original.str.contains("/", regex=False, na=False)
+
+        parsed = pd.Series(
+            pd.NaT,
+            index=trips.index,
+            dtype="datetime64[ns]",
+        )
+
+        parsed.loc[slash_dates] = pd.to_datetime(
+            original.loc[slash_dates],
+            format="%d/%m/%Y %H:%M",
+            errors="raise",
+        )
+
+        parsed.loc[~slash_dates] = pd.to_datetime(
+            original.loc[~slash_dates],
             format="%Y-%m-%d %H:%M:%S",
             errors="raise",
         )
 
-    return trips
+        trips[column] = parsed
 
+    return trips
 
 def convert_station_name(stations):
     stations = stations.copy()
