@@ -5,30 +5,26 @@ autor: co
 responsable: co
 
 alcance: >
-  Partición train definida en config.py: 2024-10-01 a 2026-02-22
-  (17 archivos mensuales, 6,311,111 viajes).
+  Archivos completos de viajes de agosto y septiembre de 2026.
 
 hallazgo: >
-  Inicio_del_viaje y Fin_del_viaje se cargan como object y usan
-  dos formatos. datos_abiertos_2024_10.csv usa %d/%m/%Y %H:%M,
-  sin segundos (418,690 viajes); los demás archivos usan
-  %Y-%m-%d %H:%M:%S.
+  Inicio_del_viaje y Fin_del_viaje se cargan como object.
+  Ambas columnas pueden convertirse a datetime64[ns]
+  con el formato %Y-%m-%d %H:%M:%S.
 
 evidencia: >
-  Notebook 1.0-co-structure.ipynb, celda 8.
+  Notebook 1.0-co-structure.ipynb.
   Ambas columnas presentan 0 faltantes originales
   y 0 valores que no pudieron convertirse.
 
 accion: >
-  Incorporar la conversión de ambas columnas y ambos formatos en
+  Incorporar la conversión de ambas columnas en
   data_preparation/structure.py, usando errors="raise"
   para detectar formatos inesperados al incorporar otros meses.
 
 resolucion: >
   Conversión implementada en convert_dates de
   mibici/data_preparation/structure.py.
-  Verificadas ambas columnas como datetime64[ns], sin NaT,
-  mediante load_stage("structure") sobre train.
-  Se utiliza errors="raise" para detectar valores
-  que no puedan convertirse.
-  Evidencia de verificación: 2.0-co-structure.ipynb.
+  Verificadas ambas columnas como datetime64[ns], sin faltantes,
+  mediante load_stage("structure"). Se utiliza errors="raise"
+  para detectar valores que no puedan convertirse.

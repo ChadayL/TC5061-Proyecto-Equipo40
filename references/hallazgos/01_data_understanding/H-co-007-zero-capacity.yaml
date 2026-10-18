@@ -5,14 +5,11 @@ autor: co
 responsable: co
 
 alcance: >
-  Catálogo nomenclatura_2026_09.csv y viajes de la partición train
-  (2024-10-01 a 2026-02-22).
+  Catálogo de septiembre y viajes de agosto-septiembre de 2026.
 
 hallazgo: >
   Las estaciones 99, 109, 116 y 138 tienen capacidad cero,
-  nombre con prefijo ex- y ninguna salida ni llegada en train.
-  El catálogo tiene 14 estaciones con prefijo ex-; 13 no tienen
-  actividad en train.
+  nombre con prefijo ex- y ninguna salida ni llegada.
 
 evidencia: >
   Notebook 1.1-co-quality.ipynb, sección Continuous Variables.

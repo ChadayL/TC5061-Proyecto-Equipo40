@@ -1,28 +1,29 @@
-import matplotlib
+from pathlib import Path
 
-matplotlib.use("Agg")
+from loguru import logger
+from tqdm import tqdm
+import typer
 
-import matplotlib.pyplot as plt  # noqa: E402
+from mibici.config import FIGURES_DIR, PROCESSED_DATA_DIR
+
+app = typer.Typer()
 
 
-def plot_station_clusters(dataset, output_path):
-    """Guarda la ubicación de las estaciones coloreada por cluster."""
-    fig, ax = plt.subplots(figsize=(10, 8))
+@app.command()
+def main(
+    # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
+    input_path: Path = PROCESSED_DATA_DIR / "dataset.csv",
+    output_path: Path = FIGURES_DIR / "plot.png",
+    # -----------------------------------------
+):
+    # ---- REPLACE THIS WITH YOUR OWN CODE ----
+    logger.info("Generating plot from data...")
+    for i in tqdm(range(10), total=10):
+        if i == 5:
+            logger.info("Something happened for iteration 5.")
+    logger.success("Plot generation complete.")
+    # -----------------------------------------
 
-    scatter = ax.scatter(
-        dataset["longitude"],
-        dataset["latitude"],
-        c=dataset["cluster"],
-        s=40,
-        alpha=0.75,
-    )
 
-    ax.set_xlabel("Longitud")
-    ax.set_ylabel("Latitud")
-    ax.set_title("P3 - Clusters de estaciones MiBici")
-    fig.colorbar(scatter, ax=ax, label="Cluster")
-    fig.tight_layout()
-    fig.savefig(output_path, dpi=150)
-    plt.close(fig)
-
-    return output_path
+if __name__ == "__main__":
+    app()

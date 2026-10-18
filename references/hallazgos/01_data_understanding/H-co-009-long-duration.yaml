@@ -4,18 +4,14 @@ estado: pendiente
 autor: co
 responsable: co
 
-alcance: >
-  Partición train definida en config.py: 2024-10-01 a 2026-02-22,
-  sin duplicados (6,311,111 viajes).
+alcance: Agosto-septiembre de 2026, sin duplicados.
 
 hallazgo: >
   Se observaron duraciones extremas, con un máximo de
-  11,500.77 minutos (aproximadamente 8 días). Los diez viajes
-  más largos superan 24 horas. Las fechas coinciden con la
-  duración calculada. Mediana: 9.62 minutos; percentil 99: 32.78.
+  2166.68 minutos. Las fechas coinciden con la duración calculada.
 
 evidencia: >
-  Notebook 1.1-co-quality.ipynb, sección Temporal Relationships.
+  Notebook 1.1-co-quality.ipynb, Temporal Relationships.
   Inspección de los diez viajes más largos.
 
 accion: >

@@ -5,24 +5,27 @@ autor: co
 responsable: co
 
 alcance: >
-  Partición train definida en config.py: 2024-10-01 a 2026-02-22
-  (17 archivos mensuales, 6,311,111 viajes).
-
+  Archivos completos de viajes de agosto y septiembre de 2026.
+  
 hallazgo: >
-  Año_de_nacimiento se carga como float64 porque contiene
-  1,717 valores faltantes. Ningún valor tiene parte decimal.
+  Año_de_nacimiento se carga como float64.
+  En los datos analizados se encontraron 60 valores faltantes
+  y ningún valor con parte decimal.
 
 evidencia: >
-  Notebook 1.0-co-structure.ipynb, celdas 4 y 5.
-  La conversión a Int64 conserva los 1,717 faltantes.
+  Notebook 1.0-co-structure.ipynb.
+  Se probó la conversión a Int64 conservando los 60 faltantes.
 
 accion: >
   Incorporar la conversión a Int64 en data_preparation/structure.py.
   Evaluar el tratamiento de los faltantes en la etapa missing.
 
+alcance: >
+  Archivos datos_abiertos_2026_08.csv y datos_abiertos_2026_09.csv,
+  cargados completos. Pendiente validar en el periodo final del proyecto.
+
 resolucion: >
   Conversión integrada en convert_birth_year de
   mibici/data_preparation/structure.py.
-  Verificada mediante load_stage("structure") sobre train:
-  tipo Int64, 6,311,111 filas y 1,717 faltantes conservados.
-  Evidencia de verificación: 2.0-co-structure.ipynb.
+  Verificada mediante load_stage("structure"):
+  tipo Int64 y conservación de los 60 faltantes.
