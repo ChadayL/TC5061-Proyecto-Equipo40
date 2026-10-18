@@ -2,8 +2,8 @@
 
 Lógica trasladada desde el train.py del equipo. La carga usa load_stage("common")
 y las particiones de get_split_periods().
-Pendiente de revisión: fórmula y umbral de riesgo (features.build_p2_features)
-e inclusión de estaciones sin actividad.
+Pendiente de revisión: fórmula y umbral de riesgo (build_risk_target,
+P2_RISK_THRESHOLD) e inclusión de estaciones sin actividad (build_daily_flows).
 """
 
 import pandas as pd
@@ -17,6 +17,7 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
+from mibici.config import P2_RISK_THRESHOLD
 from mibici.dataset import get_split_periods
 from mibici.features import build_p2_features
 from mibici.pipeline import load_stage
@@ -36,6 +37,14 @@ FEATURES = [
 ]
 
 TARGET = "riesgo_manana"
+
+# Variables con historia: las filas sin historia suficiente no se rellenan.
+HISTORY_FEATURES = [
+    "balance_lag_1",
+    "balance_lag_7",
+    "presion_lag_1",
+    "presion_promedio_7d",
+]
 
 MODEL_PARAMS = {
     "n_estimators": 200,
@@ -63,17 +72,81 @@ RESULT_COLUMNS = [
 CONTEXT_DAYS = 7
 
 
+def build_daily_flows(trips, stations):
+    """Salidas y llegadas por estación y día.
+
+    Cruza todas las estaciones del catálogo con todos los días entre la primera
+    y la última fecha de los viajes; los días sin viajes quedan en cero.
+    """
+    departures = (
+        trips.groupby([trips["Inicio_del_viaje"].dt.normalize(), "Origen_Id"])
+        .size()
+        .rename("salidas")
+    )
+    departures.index.names = ["fecha", "estacion_id"]
+
+    arrivals = (
+        trips.groupby([trips["Fin_del_viaje"].dt.normalize(), "Destino_Id"])
+        .size()
+        .rename("llegadas")
+    )
+    arrivals.index.names = ["fecha", "estacion_id"]
+
+    dates = pd.date_range(
+        min(trips["Inicio_del_viaje"].min(), trips["Fin_del_viaje"].min()).normalize(),
+        max(trips["Inicio_del_viaje"].max(), trips["Fin_del_viaje"].max()).normalize(),
+        freq="D",
+    )
+    calendar = pd.MultiIndex.from_product(
+        [dates, stations["id"].dropna().unique()],
+        names=["fecha", "estacion_id"],
+    )
+
+    daily = pd.DataFrame(index=calendar)
+    daily["salidas"] = departures.reindex(calendar, fill_value=0).astype(int)
+    daily["llegadas"] = arrivals.reindex(calendar, fill_value=0).astype(int)
+
+    return daily.reset_index()
+
+
+def add_station_capacity(daily, stations):
+    """Agrega ubicación y capacidad del catálogo; excluye estaciones sin capacidad."""
+    station_info = stations[["id", "latitude", "longitude", "dpcapacity"]].rename(
+        columns={"id": "estacion_id", "dpcapacity": "capacity"}
+    )
+
+    result = daily.merge(station_info, on="estacion_id", how="left")
+    result["capacity"] = pd.to_numeric(result["capacity"], errors="coerce")
+
+    return result.loc[result["capacity"].gt(0)].copy()
+
+
+def build_risk_target(dataset, threshold):
+    """Riesgo del día (presión >= threshold) y del día siguiente por estación."""
+    result = dataset.sort_values(["estacion_id", "fecha"]).copy()
+    result["riesgo_actual"] = result["presion_capacidad"].ge(threshold).astype(int)
+    result[TARGET] = result.groupby("estacion_id")["riesgo_actual"].shift(-1)
+    return result
+
+
 def build_period_dataset(trips, stations, start, end_exclusive):
     """Construye P2 y conserva las filas cuya fecha objetivo pertenece al periodo.
 
     Cada fila predice al cierre de `fecha` el riesgo de `fecha_objetivo` (= fecha + 1).
     """
-    dataset = build_p2_features(trips, stations)
+    daily = build_daily_flows(trips, stations)
+    daily = add_station_capacity(daily, stations)
+
+    dataset = build_p2_features(daily)
+    dataset = build_risk_target(dataset, P2_RISK_THRESHOLD)
+
+    dataset = dataset.dropna(subset=HISTORY_FEATURES + [TARGET])
+    dataset[TARGET] = dataset[TARGET].astype(int)
     dataset["fecha_objetivo"] = dataset["fecha"] + pd.Timedelta(days=1)
 
     in_period = dataset["fecha_objetivo"].ge(start) & dataset["fecha_objetivo"].lt(end_exclusive)
 
-    return dataset.loc[in_period].copy()
+    return dataset.loc[in_period].reset_index(drop=True)
 
 
 def summarize_dates(dataset, name):

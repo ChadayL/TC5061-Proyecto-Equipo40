@@ -34,6 +34,10 @@ TEST_RATIO = 0.15
 MIN_AGE = 10
 MAX_AGE = 100
 
+# P2: riesgo cuando |salidas - llegadas| / capacidad alcanza este valor en un día.
+# Regla heredada del equipo, pendiente de revisión.
+P2_RISK_THRESHOLD = 0.50
+
 
 def monthly_trip_files(start: str, end: str) -> tuple[str, ...]:
     """Genera los nombres mensuales del periodo configurado."""
