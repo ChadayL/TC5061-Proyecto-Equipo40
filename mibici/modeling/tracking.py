@@ -1,12 +1,25 @@
+import subprocess
+
 import mlflow
 
 from mibici.config import (
     MLFLOW_EXPERIMENT_NAME,
     MLFLOW_TRACKING_URI,
+    PROJ_ROOT,
 )
-from mibici.config import PROJ_ROOT
 from mibici.modeling.p1 import predict_departures
 
+TEAM_NAME = "Equipo 40"
+
+def build_run_tags(tags):
+    """Añade a las etiquetas del run el equipo y el commit del código."""
+    commit = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"],
+        cwd=PROJ_ROOT,
+        text=True,
+    ).strip()
+
+    return {**tags, "team": TEAM_NAME, "commit": commit}
 
 def configure_tracking():
     """Configura el servidor y selecciona el experimento."""
@@ -18,7 +31,7 @@ def log_evaluation(run_name, params, metrics, tags, artifacts=()):
     with mlflow.start_run(
         experiment_id=experiment.experiment_id,
         run_name=run_name,
-        tags=tags,
+        tags=build_run_tags(tags),
     ) as run:
         mlflow.log_params(params)
         mlflow.log_metrics(metrics)
@@ -41,7 +54,7 @@ def log_model_evaluation(
     with mlflow.start_run(
         experiment_id=experiment.experiment_id,
         run_name=run_name,
-        tags=tags,
+        tags=build_run_tags(tags),
     ) as run:
         mlflow.log_params(params)
         mlflow.log_metrics(metrics)
