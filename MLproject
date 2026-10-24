@@ -1,0 +1,26 @@
+name: mibici-equipo40
+
+python_env: python_env.yaml
+
+entry_points:
+  ingest:
+    command: "python -m mibici.dataset ingest"
+  train:
+    parameters:
+      question: {type: str, default: p1}
+      model: {type: str, default: auto}
+      fit_intercept: {type: str, default: auto}
+      n_estimators: {type: int, default: 0}
+      max_depth: {type: int, default: 0}
+      min_samples_leaf: {type: int, default: 0}
+      n_clusters: {type: int, default: 0}
+    command: >-
+      python -m mibici.modeling.train --problem {question} --model {model}
+      --fit-intercept {fit_intercept} --n-estimators {n_estimators}
+      --max-depth {max_depth} --min-samples-leaf {min_samples_leaf}
+      --n-clusters {n_clusters}
+
+  promote:
+    parameters:
+      question: {type: str, default: p1}
+    command: "python -m mibici.modeling.registry --problem {question}"

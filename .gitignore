@@ -192,6 +192,8 @@ cython_debug/
 # MLflow local files
 mlruns/
 mlflow.db
+mlflow.db-*
+mlartifacts/
 
 # Generated predictions
 predicciones_p1.csv

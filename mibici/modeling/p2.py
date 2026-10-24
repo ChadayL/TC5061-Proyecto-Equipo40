@@ -17,7 +17,7 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
-from mibici.config import P2_RISK_THRESHOLD
+from mibici.config import P2_MODEL_PARAMS, P2_RISK_THRESHOLD
 from mibici.dataset import get_split_periods
 from mibici.features import build_p2_features
 from mibici.pipeline import load_stage
@@ -46,13 +46,7 @@ HISTORY_FEATURES = [
     "presion_promedio_7d",
 ]
 
-MODEL_PARAMS = {
-    "n_estimators": 200,
-    "max_depth": 15,
-    "min_samples_leaf": 2,
-    "class_weight": "balanced",
-    "random_state": 42,
-}
+MODEL_PARAMS = P2_MODEL_PARAMS
 
 RESULT_COLUMNS = [
     "fecha",
@@ -200,8 +194,12 @@ def prepare_p2_data():
     }
 
 
-def build_p2_model():
-    return RandomForestClassifier(**MODEL_PARAMS, n_jobs=-1)
+def build_p2_model(**overrides):
+    params = {
+        **MODEL_PARAMS,
+        **{key: value for key, value in overrides.items() if value is not None},
+    }
+    return RandomForestClassifier(**params, n_jobs=-1)
 
 
 def predict_baseline(data):

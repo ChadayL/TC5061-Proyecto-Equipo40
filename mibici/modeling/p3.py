@@ -10,6 +10,7 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
+from mibici.config import P3_RANDOM_STATE
 from mibici.data_preparation.scaling import build_scaler
 from mibici.dataset import get_split_periods
 from mibici.features import build_p3_features
@@ -28,7 +29,7 @@ FEATURES = [
 
 K_VALUES = [2, 3, 4, 5, 6]
 
-RANDOM_STATE = 42
+RANDOM_STATE = P3_RANDOM_STATE
 
 
 def build_daily_departures(trips):
