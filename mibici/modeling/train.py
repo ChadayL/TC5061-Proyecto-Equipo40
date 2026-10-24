@@ -3,7 +3,9 @@ from tempfile import TemporaryDirectory
 
 import typer
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.pipeline import Pipeline
 
+from mibici.config import DEFAULT_MODELS, P1_FIT_INTERCEPT
 from mibici.dataset import get_data_version
 from mibici.modeling import p2, p3
 from mibici.modeling.p1 import (
@@ -16,6 +18,7 @@ from mibici.modeling.p1 import (
 )
 from mibici.modeling.tracking import (
     DepartureModel,
+    EstimatorModel,
     log_evaluation,
     log_model_evaluation,
 )
@@ -24,7 +27,7 @@ from mibici.plots import plot_station_clusters
 app = typer.Typer()
 
 
-def run_p1(model_name: str, fit_intercept: bool):
+def run_p1(model_name: str, fit_intercept: bool, **_options):
     if model_name != "linear_regression":
         raise ValueError(f"Modelo no disponible para P1: {model_name!r}")
 
@@ -47,9 +50,12 @@ def run_p1(model_name: str, fit_intercept: bool):
 
     predictions = predict_departures(model, X_validation)
 
+    baseline_predictions = validation["departures_lag_1"].clip(lower=0)
     metrics = {
         "validation_mae": mean_absolute_error(y_validation, predictions),
         "validation_rmse": mean_squared_error(y_validation, predictions) ** 0.5,
+        "baseline_validation_mae": mean_absolute_error(y_validation, baseline_predictions),
+        "baseline_validation_rmse": mean_squared_error(y_validation, baseline_predictions) ** 0.5,
     }
 
     params = {
@@ -91,9 +97,10 @@ def run_p1(model_name: str, fit_intercept: bool):
     typer.echo(f"Modelo: {model_uri}")
     typer.echo(f"Validation MAE: {metrics['validation_mae']:.3f}")
     typer.echo(f"Validation RMSE: {metrics['validation_rmse']:.3f}")
+    typer.echo(f"Baseline RMSE: {metrics['baseline_validation_rmse']:.3f}")
 
 
-def run_p2(model_name: str, **_options):
+def run_p2(model_name: str, n_estimators=None, max_depth=None, min_samples_leaf=None, **_options):
     if model_name != "random_forest":
         raise ValueError(f"Modelo no disponible para P2: {model_name!r}")
 
@@ -106,7 +113,11 @@ def run_p2(model_name: str, **_options):
     X_validation = validation[p2.FEATURES]
     y_validation = validation[p2.TARGET]
 
-    model = p2.build_p2_model()
+    model = p2.build_p2_model(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        min_samples_leaf=min_samples_leaf,
+    )
     model.fit(train[p2.FEATURES], train[p2.TARGET])
 
     predictions = model.predict(X_validation)
@@ -124,7 +135,7 @@ def run_p2(model_name: str, **_options):
     params = {
         "data_version": get_data_version(),
         "model": model_name,
-        **p2.MODEL_PARAMS,
+        **{key: model.get_params()[key] for key in p2.MODEL_PARAMS},
         "train_start": str(periods["train"][0].date()),
         "train_end_exclusive": str(periods["train"][1].date()),
         "validation_start": str(periods["validation"][0].date()),
@@ -142,8 +153,12 @@ def run_p2(model_name: str, **_options):
         results_path = Path(tmp) / "predicciones_p2.csv"
         results.to_csv(results_path, index=False)
 
-        run_id = log_evaluation(
+        example = X_validation.head(5)
+        run_id, model_uri = log_model_evaluation(
             run_name="p2_random_forest",
+            python_model=EstimatorModel(model),
+            input_example=example,
+            output_example=model.predict(example),
             params=params,
             metrics=metrics,
             tags={"problem": "p2", "run_type": "model", "execution": "cli"},
@@ -151,12 +166,13 @@ def run_p2(model_name: str, **_options):
         )
 
     typer.echo(f"Run: {run_id}")
+    typer.echo(f"Modelo: {model_uri}")
     typer.echo(f"Baseline F1: {metrics['baseline_f1']:.3f}")
     typer.echo(f"F1: {metrics['f1']:.3f}")
     typer.echo(f"ROC-AUC: {metrics['roc_auc']:.3f}")
 
 
-def run_p3(model_name: str, **_options):
+def run_p3(model_name: str, n_clusters=None, **_options):
     if model_name != "kmeans":
         raise ValueError(f"Modelo no disponible para P3: {model_name!r}")
 
@@ -164,13 +180,16 @@ def run_p3(model_name: str, **_options):
     dataset = prepared["dataset"]
     start, end_exclusive = prepared["period"]
 
-    _, X_scaled = p3.scale_features(dataset)
+    scaler, X_scaled = p3.scale_features(dataset)
 
     scores = p3.evaluate_k_values(X_scaled)
-    best_k = p3.select_best_k(scores)
+    best_k = n_clusters if n_clusters is not None else p3.select_best_k(scores)
+    if best_k not in p3.K_VALUES:
+        raise ValueError(f"n_clusters debe pertenecer a {p3.K_VALUES}")
 
     model = p3.build_p3_model(best_k)
     dataset["cluster"] = model.fit_predict(X_scaled)
+    model_pipeline = Pipeline([("scaler", scaler), ("kmeans", model)])
 
     profile, sizes = p3.cluster_profile(dataset)
 
@@ -196,8 +215,12 @@ def run_p3(model_name: str, **_options):
         dataset.to_csv(results_path, index=False)
         plot_path = plot_station_clusters(dataset, Path(tmp) / "clusters_p3.png")
 
-        run_id = log_evaluation(
+        example = dataset[p3.FEATURES].head(5)
+        run_id, model_uri = log_model_evaluation(
             run_name="p3_kmeans",
+            python_model=EstimatorModel(model_pipeline),
+            input_example=example,
+            output_example=model_pipeline.predict(example),
             params=params,
             metrics=metrics,
             tags={"problem": "p3", "run_type": "model", "execution": "cli"},
@@ -205,6 +228,7 @@ def run_p3(model_name: str, **_options):
         )
 
     typer.echo(f"Run: {run_id}")
+    typer.echo(f"Modelo: {model_uri}")
     typer.echo(f"Mejor K: {best_k} (silhouette {scores[best_k]:.3f})")
     typer.echo(f"Estaciones por cluster:\n{sizes.to_string()}")
     typer.echo(f"Perfil promedio:\n{profile.to_string()}")
@@ -217,21 +241,15 @@ TRAINERS = {
     "p3": run_p3,
 }
 
-DEFAULT_MODELS = {
-    "p1": "linear_regression",
-    "p2": "random_forest",
-    "p3": "kmeans",
-}
-
-
 @app.command()
 def main(
     problem: str = typer.Option("p1", "--problem"),
     model: str = typer.Option(None, "--model", help="Por defecto, el modelo base de cada problema."),
-    fit_intercept: bool = typer.Option(
-        True,
-        "--fit-intercept/--no-fit-intercept",
-    ),
+    fit_intercept: str = typer.Option("auto", "--fit-intercept"),
+    n_estimators: int | None = typer.Option(None),
+    max_depth: int | None = typer.Option(None),
+    min_samples_leaf: int | None = typer.Option(None),
+    n_clusters: int | None = typer.Option(None),
 ):
     if problem not in TRAINERS:
         available = ", ".join(TRAINERS)
@@ -241,9 +259,25 @@ def main(
             param_hint="--problem",
         )
 
+    if fit_intercept.lower() not in {"auto", "true", "false"}:
+        raise typer.BadParameter("Usa true, false o auto", param_hint="--fit-intercept")
+    resolved_fit_intercept = (
+        P1_FIT_INTERCEPT
+        if fit_intercept.lower() == "auto"
+        else fit_intercept.lower() == "true"
+    )
+
+    requested_model = model.strip().strip('"').strip("'")
+    if requested_model.lower() in {"", "auto", "none"}:
+        requested_model = DEFAULT_MODELS[problem]
+
     TRAINERS[problem](
-        model_name=model or DEFAULT_MODELS[problem],
-        fit_intercept=fit_intercept,
+        model_name=requested_model,
+        fit_intercept=resolved_fit_intercept,
+        n_estimators=n_estimators or None,
+        max_depth=max_depth or None,
+        min_samples_leaf=min_samples_leaf or None,
+        n_clusters=n_clusters or None,
     )
 
 

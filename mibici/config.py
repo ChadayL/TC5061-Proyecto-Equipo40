@@ -121,7 +121,7 @@ MLFLOW_TRACKING_URI = os.getenv(
 
 MLFLOW_EXPERIMENT_NAME = os.getenv(
     "MLFLOW_EXPERIMENT_NAME",
-    "TC5061-Proyecto-Equipo40",
+    "mibici-equipo40",
 )
 
 
@@ -134,3 +134,16 @@ try:
     logger.add(lambda msg: tqdm.write(msg, end=""), colorize=True)
 except ModuleNotFoundError:
     pass
+
+
+# Defaults de los modelos usados por la CLI y MLflow Project.
+DEFAULT_MODELS = {"p1": "linear_regression", "p2": "random_forest", "p3": "kmeans"}
+P1_FIT_INTERCEPT = True
+P2_MODEL_PARAMS = {
+    "n_estimators": 200,
+    "max_depth": 15,
+    "min_samples_leaf": 2,
+    "class_weight": "balanced",
+    "random_state": 42,
+}
+P3_RANDOM_STATE = 42
