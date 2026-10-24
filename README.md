@@ -8,23 +8,62 @@ Proyecto colaborativo para estudiar los viajes de MiBici y responder tres pregun
 
 El inventario real de bicicletas no está disponible en los archivos de viajes. La etiqueta de P2 es una aproximación que todavía debe justificarse.
 
-## Instalación
+## Instalación y servidor MLflow
 
-Ejecutar desde la raíz del repositorio, donde está `pyproject.toml`:
+Se requiere Python 3.10. El entorno de `MLproject` fija las versiones directas usadas por el proyecto en `requirements-mlproject.txt`; `uv.lock` conserva el lock completo para el entorno de desarrollo.
 
 ```bash
 python -m pip install uv
 uv sync --locked
 ```
 
-La versión de Python (3.10) se define en `pyproject.toml` y las dependencias en `uv.lock`.
+En una terminal, inicia el servidor local con backend SQLite y artefactos locales:
+
+```bash
+uv run mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlartifacts --host 127.0.0.1 --port 5000
+```
+
+En otra terminal, apunta el cliente al mismo servidor (PowerShell: `$env:MLFLOW_TRACKING_URI="http://127.0.0.1:5000"`; Bash: `export MLFLOW_TRACKING_URI=http://127.0.0.1:5000`). Por defecto se usa el experimento `mibici-equipo40`; puede cambiarse con `MLFLOW_EXPERIMENT_NAME`. La base `mlflow.db` y `mlartifacts/` son locales y están excluidos de Git.
+
+## Proyecto MLflow reproducible
+
+`MLproject` ofrece los puntos de entrada `ingest` y `train`. Desde la raíz, luego de iniciar el servidor, ejecutar:
+
+```bash
+uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e ingest
+uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e train -P question=p1
+uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e train -P question=p2
+uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e train -P question=p3
+```
+
+Se pueden variar modelos e hiperparámetros desde el mismo punto de entrada; los valores omitidos se toman de `mibici/config.py`:
+
+```bash
+uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e train -P question=p1 -P fit_intercept=false
+uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e train -P question=p2 -P n_estimators=300 -P max_depth=20
+uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e train -P question=p3 -P n_clusters=4
+```
+
+Los modelos disponibles son `linear_regression` para P1, `random_forest` para P2 y `kmeans` para P3. P3 elige automáticamente K por silhouette si no se especifica `n_clusters`. Todas las corridas registran commit, equipo, parámetros, métricas y versión de datos en el experimento configurado. La ingesta debe ejecutarse antes del entrenamiento en un clon limpio.
+
+### Registrar los modelos seleccionados
+
+Para que P2 y P3 tengan modelos en el Registry, vuelve a ejecutar sus entrenamientos con el código actualizado. P1 ya guarda el modelo. Después de que cada pregunta tenga corridas exitosas con el artefacto `model`, registra la mejor según su métrica de selección:
+
+```powershell
+uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e promote -P question=p1
+uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e promote -P question=p2
+uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e promote -P question=p3
+```
+
+La selección minimiza `validation_rmse` en P1 y maximiza `f1` en P2 y `silhouette_score` en P3. Cada versión conserva la corrida de origen y etiquetas con la versión de datos y el commit. Se asigna el alias `production` y la etapa `Production` del Registry. En MLflow 3, el alias es la referencia recomendada para cargar el modelo.
 
 ## Ingesta de datos
 
 Fuente: [datos abiertos de MiBici](https://mibici.net/es/datos-abiertos/). Un solo comando, sin pasos manuales:
 
 ```bash
-uv run python -m mibici.dataset ingest
+uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e ingest
 ```
 
 1. **Descarga** a `data/raw/` los 24 meses de viajes (`datos_abiertos_2024_10.csv` … `datos_abiertos_2026_09.csv`) y la nomenclatura `nomenclatura_2026_09.csv`. Omite los archivos que ya existen.
@@ -83,21 +122,13 @@ estaciones = datos["estaciones"]
 
 ## Entrenar
 
-Un solo punto de entrada para las tres preguntas:
-
-```bash
-uv run python -m mibici.modeling.train --problem p1
-uv run python -m mibici.modeling.train --problem p2
-uv run python -m mibici.modeling.train --problem p3
-```
+Usa `mlflow run` para todas las corridas; consulta la sección [Proyecto MLflow reproducible](#proyecto-mlflow-reproducible) para reproducir ingesta, entrenamientos y variantes de parámetros.
 
 | Problema | Modelo por defecto | Datos |
 |---|---|---|
-| `p1` | Regresión lineal | Entrena con train y evalúa en validation, prediciendo a un día. |
-| `p2` | Random Forest | Entrena con train y evalúa en validation; cada fila se asigna por su fecha objetivo. |
-| `p3` | K-Means | Solo train. |
-
-Cada ejecución registra parámetros, métricas y artefactos en MLflow. El servidor y el experimento se configuran con `MLFLOW_TRACKING_URI` (por defecto `http://mlflow:5000`) y `MLFLOW_EXPERIMENT_NAME`.
+| `p1` | Regresión lineal | Train y validation; predicción diaria a un paso. |
+| `p2` | Random Forest | Train y validation; cada fila se asigna por su fecha objetivo. |
+| `p3` | K-Means | Solo train; selección de K por silhouette salvo que se fije `n_clusters`. |
 
 ## Estructura
 

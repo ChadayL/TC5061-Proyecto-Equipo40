@@ -13,11 +13,15 @@ TEAM_NAME = "Equipo 40"
 
 def build_run_tags(tags):
     """Añade a las etiquetas del run el equipo y el commit del código."""
-    commit = subprocess.check_output(
-        ["git", "rev-parse", "HEAD"],
-        cwd=PROJ_ROOT,
-        text=True,
-    ).strip()
+    try:
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=PROJ_ROOT,
+            text=True,
+        ).strip()
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        # MLflow Projects en Windows puede no heredar el PATH de Git.
+        commit = "unknown"
 
     return {**tags, "team": TEAM_NAME, "commit": commit}
 
@@ -26,6 +30,19 @@ def configure_tracking():
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     return mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 
+def log_effective_params(params, run):
+    """Registra valores efectivos sin cambiar los del MLflow Project."""
+    existing = run.data.params
+    to_log = {}
+    for key, value in params.items():
+        if key in existing and existing[key] != str(value):
+            to_log[f"effective_{key}"] = value
+        elif key not in existing:
+            to_log[key] = value
+    if to_log:
+        mlflow.log_params(to_log)
+
+
 def log_evaluation(run_name, params, metrics, tags, artifacts=()):
     experiment = configure_tracking()
     with mlflow.start_run(
@@ -33,7 +50,7 @@ def log_evaluation(run_name, params, metrics, tags, artifacts=()):
         run_name=run_name,
         tags=build_run_tags(tags),
     ) as run:
-        mlflow.log_params(params)
+        log_effective_params(params, run)
         mlflow.log_metrics(metrics)
         for path in artifacts:
             mlflow.log_artifact(str(path), artifact_path="resultados")
@@ -48,6 +65,7 @@ def log_model_evaluation(
     params,
     metrics,
     tags,
+    artifacts=(),
 ):
     experiment = configure_tracking()
 
@@ -56,8 +74,10 @@ def log_model_evaluation(
         run_name=run_name,
         tags=build_run_tags(tags),
     ) as run:
-        mlflow.log_params(params)
+        log_effective_params(params, run)
         mlflow.log_metrics(metrics)
+        for path in artifacts:
+            mlflow.log_artifact(str(path), artifact_path="resultados")
 
         model_info = mlflow.pyfunc.log_model(
             artifact_path="model",
@@ -68,6 +88,16 @@ def log_model_evaluation(
         )
 
         return run.info.run_id, model_info.model_uri
+
+
+class EstimatorModel(mlflow.pyfunc.PythonModel):
+    """Adapter pyfunc para modelos sklearn de clasificación y clustering."""
+
+    def __init__(self, estimator):
+        self.estimator = estimator
+
+    def predict(self, context, model_input, params=None):
+        return self.estimator.predict(model_input)
 
 
 class DepartureModel(mlflow.pyfunc.PythonModel):
