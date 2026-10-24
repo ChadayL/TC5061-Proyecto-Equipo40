@@ -1,0 +1,9 @@
+question: p2
+model: random_forest
+candidates:
+  - n_estimators: 100
+    max_depth: 10
+  - n_estimators: 200
+    max_depth: 20
+  - n_estimators: 300
+    max_depth: 20

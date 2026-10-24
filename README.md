@@ -44,7 +44,32 @@ uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e tra
 uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e train -P question=p3 -P n_clusters=4
 ```
 
-Los modelos disponibles son `linear_regression` para P1, `random_forest` para P2 y `kmeans` para P3. P3 elige automáticamente K por silhouette si no se especifica `n_clusters`. Todas las corridas registran commit, equipo, parámetros, métricas y versión de datos en el experimento configurado. La ingesta debe ejecutarse antes del entrenamiento en un clon limpio.
+Los modelos disponibles son `linear_regression` y `ridge` para P1, `random_forest` para P2 y `kmeans` para P3. P3 elige automáticamente K por silhouette si no se especifica `n_clusters`. Todas las corridas registran commit, equipo, parámetros, métricas y versión de datos en el experimento configurado. La ingesta debe ejecutarse antes del entrenamiento en un clon limpio.
+
+### Experimentos con corridas anidadas
+
+Los planes en `configs/experiments/` contienen tres configuraciones candidatas por pregunta. Los parámetros omitidos mantienen los valores de `config.py`. Se ejecutan secuencialmente para no competir por memoria:
+
+```bash
+uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e search -P config=configs/experiments/p1.yaml
+uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e search -P config=configs/experiments/p2.yaml
+uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e search -P config=configs/experiments/p3.yaml
+```
+
+La búsqueda es la corrida padre (`stage_of_work=search`). Cada combinación ejecuta el punto de entrada `train` del mismo Project y aparece como corrida hija (`stage_of_work=candidate`). No se cambian los cortes temporales ni las métricas anteriores. P1 compara Ridge con distintos valores de `alpha`; P2 varía árboles y profundidad; P3 fija K. Los YAML son planes iniciales, no modelos ganadores ni resultados ya obtenidos.
+
+Cada candidata conserva el modelo con firma y ejemplo, `plots/` (desempeño), `data/` (manifiesto y resultados agregados) y `config/` (valores efectivos, configuración y dependencias). También registra metadatos del conjunto de entrenamiento con `log_input`, sin subir la tabla de viajes, y etiquetas `question`, `model_family`, `stage_of_work`, `team` y `commit`. El hash y la copia de `features.py` permiten detectar cambios en variables entre corridas.
+
+Para entrenar una candidata individual o reproducir una configuración base:
+
+```bash
+uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e train -P question=p1 -P model=ridge -P alpha=1.0
+uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e train -P question=p1 -P model=linear_regression -P stage_of_work=baseline
+```
+
+La etiqueta `baseline` solo identifica la configuración ejecutada; no reemplaza ni modifica la corrida de la entrega anterior. Antes de comparar, comprueben la misma versión de datos, variables, población de estaciones y particiones. Si cambia la preparación, repitan la configuración base y documenten el cambio. Las métricas de P1/P2 siguen siendo de validation y silhouette de P3 sigue siendo de train. La selección y la evaluación final de test se realizan después de cerrar las configuraciones; estas búsquedas no consumen test ni promueven modelos automáticamente.
+
+El tiempo `fit_seconds` mide el ajuste del modelo; en P3 incluye escalado y exploración de K. `predict_seconds` mide las predicciones de validación de P1/P2 (incluye probabilidades en P2). Son mediciones de una ejecución, no una prueba de estabilidad entre semillas.
 
 ### Registrar los modelos seleccionados
 

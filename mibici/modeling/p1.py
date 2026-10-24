@@ -1,14 +1,14 @@
-from mibici.pipeline import load_stage
 import pandas as pd
-
 from sklearn.compose import ColumnTransformer
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.pipeline import Pipeline
 
+from mibici.config import P1_RIDGE_ALPHA
 from mibici.data_preparation.encoding import build_encoder
 from mibici.data_preparation.scaling import build_scaler
 from mibici.dataset import get_split_periods
 from mibici.features import build_p1_features
+from mibici.pipeline import load_stage
 
 CATEGORICAL_FEATURES = ["station_id", "day_of_week"]
 
@@ -277,7 +277,14 @@ def load_p1_data():
     return build_daily_departures(data["viajes"])
 
 
-def build_model_pipeline(fit_intercept=True):
+def build_model_pipeline(fit_intercept=True, model_name="linear_regression", alpha=P1_RIDGE_ALPHA):
+    if model_name == "linear_regression":
+        regressor = LinearRegression(fit_intercept=fit_intercept)
+    elif model_name == "ridge":
+        regressor = Ridge(alpha=alpha, fit_intercept=fit_intercept, solver="lsqr")
+    else:
+        raise ValueError(f"Modelo no disponible para P1: {model_name!r}")
+
     preprocessor = ColumnTransformer(
         transformers=[
             ("categorical", build_encoder(), CATEGORICAL_FEATURES),
@@ -288,6 +295,6 @@ def build_model_pipeline(fit_intercept=True):
     return Pipeline(
         steps=[
             ("preprocessor", preprocessor),
-            ("regressor", LinearRegression(fit_intercept=fit_intercept)),
+            ("regressor", regressor),
         ]
     )

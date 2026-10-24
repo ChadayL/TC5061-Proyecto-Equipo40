@@ -14,11 +14,18 @@ entry_points:
       max_depth: {type: int, default: 0}
       min_samples_leaf: {type: int, default: 0}
       n_clusters: {type: int, default: 0}
+      alpha: {type: float, default: -1.0}
+      stage_of_work: {type: str, default: candidate}
     command: >-
       python -m mibici.modeling.train --problem {question} --model {model}
       --fit-intercept {fit_intercept} --n-estimators {n_estimators}
       --max-depth {max_depth} --min-samples-leaf {min_samples_leaf}
-      --n-clusters {n_clusters}
+      --n-clusters {n_clusters} --alpha {alpha} --stage-of-work {stage_of_work}
+
+  search:
+    parameters:
+      config: {type: path}
+    command: "python -m mibici.modeling.search --config {config}"
 
   promote:
     parameters:

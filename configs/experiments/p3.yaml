@@ -1,0 +1,6 @@
+question: p3
+model: kmeans
+candidates:
+  - n_clusters: 3
+  - n_clusters: 4
+  - n_clusters: 5

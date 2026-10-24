@@ -1,8 +1,11 @@
+import hashlib
 import subprocess
 
+import matplotlib.pyplot as plt
 import mlflow
 
 from mibici.config import (
+    DATA_MANIFEST,
     MLFLOW_EXPERIMENT_NAME,
     MLFLOW_TRACKING_URI,
     PROJ_ROOT,
@@ -23,7 +26,8 @@ def build_run_tags(tags):
         # MLflow Projects en Windows puede no heredar el PATH de Git.
         commit = "unknown"
 
-    return {**tags, "team": TEAM_NAME, "commit": commit}
+    features_hash = hashlib.sha256((PROJ_ROOT / "mibici/features.py").read_bytes()).hexdigest()
+    return {**tags, "team": TEAM_NAME, "commit": commit, "features_sha256": features_hash}
 
 def configure_tracking():
     """Configura el servidor y selecciona el experimento."""
@@ -66,18 +70,48 @@ def log_model_evaluation(
     metrics,
     tags,
     artifacts=(),
+    figures=None,
+    training_data=None,
+    target=None,
+    stage_of_work="candidate",
 ):
     experiment = configure_tracking()
 
     with mlflow.start_run(
         experiment_id=experiment.experiment_id,
         run_name=run_name,
-        tags=build_run_tags(tags),
+        tags=build_run_tags({
+            **tags,
+            "question": tags["problem"],
+            "model_family": params["model"],
+            "stage_of_work": stage_of_work,
+        }),
     ) as run:
         log_effective_params(params, run)
         mlflow.log_metrics(metrics)
-        for path in artifacts:
-            mlflow.log_artifact(str(path), artifact_path="resultados")
+        for path, folder in artifacts:
+            mlflow.log_artifact(str(path), artifact_path=folder)
+        for name, figure in (figures or {}).items():
+            try:
+                mlflow.log_figure(figure, f"plots/{name}")
+            finally:
+                plt.close(figure)
+
+        mlflow.log_artifact(str(DATA_MANIFEST), artifact_path="data")
+        mlflow.log_dict(params, "config/resolved.json")
+        for relative_path in (
+            "mibici/config.py", "MLproject", "python_env.yaml",
+            "requirements-mlproject.txt", "uv.lock",
+        ):
+            mlflow.log_artifact(str(PROJ_ROOT / relative_path), artifact_path="config")
+        # Conserva la implementación exacta de las variables, incluso antes de un commit.
+        mlflow.log_artifact(str(PROJ_ROOT / "mibici/features.py"), artifact_path="config")
+        if training_data is not None:
+            dataset = mlflow.data.from_pandas(
+                training_data, source=DATA_MANIFEST.as_uri(),
+                name=f"{tags['problem']}-train", targets=target,
+            )
+            mlflow.log_input(dataset, context="training")
 
         model_info = mlflow.pyfunc.log_model(
             artifact_path="model",
