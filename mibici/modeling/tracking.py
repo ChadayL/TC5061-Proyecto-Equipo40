@@ -1,4 +1,5 @@
 import hashlib
+import os
 import subprocess
 
 import matplotlib.pyplot as plt
@@ -30,8 +31,12 @@ def build_run_tags(tags):
     return {**tags, "team": TEAM_NAME, "commit": commit, "features_sha256": features_hash}
 
 def configure_tracking():
-    """Configura el servidor y selecciona el experimento."""
+    """Respeta el experimento del Project; fuera de él usa la configuración."""
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+    run_id = os.environ.get("MLFLOW_RUN_ID")
+    if run_id:
+        experiment_id = mlflow.get_run(run_id).info.experiment_id
+        return mlflow.set_experiment(experiment_id=experiment_id)
     return mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 
 def log_effective_params(params, run):
