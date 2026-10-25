@@ -1,3 +1,7 @@
+# ============================================================
+# P1 - REGRESIÓN
+# ============================================================
+
 def add_calendar_features(daily_demand):
     result = daily_demand.copy()
     result["day_of_week"] = result["date"].dt.dayofweek

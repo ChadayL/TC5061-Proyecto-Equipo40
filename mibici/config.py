@@ -139,6 +139,7 @@ except ModuleNotFoundError:
 # Defaults de los modelos usados por la CLI y MLflow Project.
 DEFAULT_MODELS = {"p1": "linear_regression", "p2": "random_forest", "p3": "kmeans"}
 P1_FIT_INTERCEPT = True
+P1_RIDGE_ALPHA = 1.0
 P2_MODEL_PARAMS = {
     "n_estimators": 200,
     "max_depth": 15,
@@ -147,3 +148,5 @@ P2_MODEL_PARAMS = {
     "random_state": 42,
 }
 P3_RANDOM_STATE = 42
+P3_K_VALUES = [2, 3, 4, 5, 6]
+P3_N_INIT = 10

@@ -10,7 +10,7 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
-from mibici.config import P3_RANDOM_STATE
+from mibici.config import P3_K_VALUES, P3_N_INIT, P3_RANDOM_STATE
 from mibici.data_preparation.scaling import build_scaler
 from mibici.dataset import get_split_periods
 from mibici.features import build_p3_features
@@ -27,7 +27,7 @@ FEATURES = [
     "capacity",
 ]
 
-K_VALUES = [2, 3, 4, 5, 6]
+K_VALUES = P3_K_VALUES
 
 RANDOM_STATE = P3_RANDOM_STATE
 
@@ -89,7 +89,7 @@ def scale_features(dataset):
 
 
 def build_p3_model(n_clusters):
-    return KMeans(n_clusters=n_clusters, random_state=RANDOM_STATE, n_init=10)
+    return KMeans(n_clusters=n_clusters, random_state=RANDOM_STATE, n_init=P3_N_INIT)
 
 
 def evaluate_k_values(X_scaled, k_values=K_VALUES):

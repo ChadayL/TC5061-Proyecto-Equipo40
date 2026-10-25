@@ -1,0 +1,6 @@
+question: p1
+model: ridge
+candidates:
+  - alpha: 0.1
+  - alpha: 1.0
+  - alpha: 10.0
