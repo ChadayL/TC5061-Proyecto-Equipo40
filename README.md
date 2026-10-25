@@ -73,15 +73,44 @@ El tiempo `fit_seconds` mide el ajuste del modelo; en P3 incluye escalado y expl
 
 ### Registrar los modelos seleccionados
 
-Para que P2 y P3 tengan modelos en el Registry, vuelve a ejecutar sus entrenamientos con el código actualizado. P1 ya guarda el modelo. Después de que cada pregunta tenga corridas exitosas con el artefacto `model`, registra la mejor según su métrica de selección:
+Después de entrenar y comparar las candidatas, registra el modelo elegido de cada pregunta. Ejecuta estos comandos dentro del contenedor de trabajo y usa el mismo experimento que contiene los baselines. El servidor actual conserva el historial en `TC5061-Proyecto-Equipo40`:
 
-```powershell
-uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e promote -P question=p1
-uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e promote -P question=p2
-uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e promote -P question=p3
+```bash
+export MLFLOW_TRACKING_URI=http://mlflow:5000
+export MLFLOW_EXPERIMENT_NAME=TC5061-Proyecto-Equipo40
+
+uv run --locked mlflow run . --experiment-name "$MLFLOW_EXPERIMENT_NAME" --env-manager local -e promote -P question=p1
+uv run --locked mlflow run . --experiment-name "$MLFLOW_EXPERIMENT_NAME" --env-manager local -e promote -P question=p2
+uv run --locked mlflow run . --experiment-name "$MLFLOW_EXPERIMENT_NAME" --env-manager local -e promote -P question=p3
 ```
 
 La selección minimiza `validation_rmse` en P1 y maximiza `f1` en P2 y `silhouette_score` en P3. Cada versión conserva la corrida de origen y etiquetas con la versión de datos y el commit. Se asigna el alias `production` y la etapa `Production` del Registry. En MLflow 3, el alias es la referencia recomendada para cargar el modelo.
+
+### Ciclo de vida y carga por alias
+
+Usamos `production` como alias principal porque separa el nombre que utiliza quien consume el modelo de su número de versión. Al elegir otro modelo, se mueve el alias a la nueva versión; las anteriores conservan su linaje y pueden recuperarse. También se mantiene la etapa clásica `Production` para compatibilidad, pero los consumidores deben cargar por alias. Registrar o promover un modelo no levanta un servicio de inferencia.
+
+| Pregunta | Modelo registrado | Referencia de carga |
+|---|---|---|
+| P1 | `mibici-p1` | `models:/mibici-p1@production` |
+| P2 | `mibici-p2` | `models:/mibici-p2@production` |
+| P3 | `mibici-p3` | `models:/mibici-p3@production` |
+
+Desde Python dentro del contenedor, con el entorno del proyecto:
+
+```python
+import mlflow
+
+mlflow.set_tracking_uri("http://mlflow:5000")
+model = mlflow.pyfunc.load_model("models:/mibici-p1@production")
+predictions = model.predict(features)
+```
+
+`features` debe ser una tabla con las columnas de la firma del modelo: cinco variables en P1, once en P2 y ocho en P3. P1 y P3 incluyen sus transformaciones de encoding/escalado o escalado, respectivamente. Las agregaciones desde viajes crudos se preparan antes de llamar al modelo. No se necesita la columna objetivo para predecir.
+
+Se verificó dentro de Docker la carga de las versiones 1 de los tres modelos por alias `production`, con sus firmas y ejemplos de entrada guardados, y la generación de predicciones. Esta comprobación valida la carga e inferencia técnica; no sustituye la evaluación final en test ni el análisis de estabilidad.
+
+Cada ejecución de `promote` crea una versión, incluso si vuelve a seleccionar la misma corrida. No lo repitas solo para comprobar la carga: usa `load_model` con el alias.
 
 ## Ingesta de datos
 
