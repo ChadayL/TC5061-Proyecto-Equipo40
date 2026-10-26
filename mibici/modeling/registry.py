@@ -78,12 +78,6 @@ def promote(problem: str = typer.Option(..., "--problem")):
     client.set_registered_model_alias(registered_name, "production", version.version)
     # El alias es la referencia recomendada en MLflow 3; se conserva también la etapa
     # solicitada en la actividad para mostrar Production en la interfaz del Registry.
-    client.transition_model_version_stage(
-        name=registered_name,
-        version=version.version,
-        stage="Production",
-        archive_existing_versions=True,
-    )
 
     source_data = run.data.params.get("data_version", "unknown")
     source_commit = run.data.tags.get("commit", "unknown")
@@ -95,6 +89,22 @@ def promote(problem: str = typer.Option(..., "--problem")):
     else:
         improved = selected_value < baseline_value if problem == "p1" else selected_value > baseline_value
         baseline_result = "better_than_baseline" if improved else "not_better_than_baseline"
+    description = (
+        f"Pregunta {problem.upper()}. "
+        f"Modelo: {run.data.params.get('model', 'desconocido')}. "
+        f"Seleccionado por {metric}={selected_value:.4f} en validación. "
+        f"Corrida de origen: {run.info.run_id}. "
+        f"Versión de datos: {source_data}; commit: {source_commit}. "
+        f"Resultado frente al baseline: {baseline_result}. "
+        "La selección no usa el conjunto de prueba ni demuestra estabilidad "
+        "entre semillas."
+    )
+    client.update_model_version(
+        name=registered_name,
+        version=version.version,
+        description=description,
+    )
+
     client.set_model_version_tag(registered_name, version.version, "question", problem)
     client.set_model_version_tag(registered_name, version.version, "selection_metric", metric)
     client.set_model_version_tag(
@@ -103,6 +113,13 @@ def promote(problem: str = typer.Option(..., "--problem")):
     client.set_model_version_tag(registered_name, version.version, "data_version", source_data)
     client.set_model_version_tag(registered_name, version.version, "commit", source_commit)
     client.set_model_version_tag(registered_name, version.version, "baseline_result", baseline_result)
+
+    client.transition_model_version_stage(
+        name=registered_name,
+        version=version.version,
+        stage="Production",
+        archive_existing_versions=True,
+    )
 
     typer.echo(f"Modelo: {registered_name}")
     typer.echo(f"Versión: {version.version}")
