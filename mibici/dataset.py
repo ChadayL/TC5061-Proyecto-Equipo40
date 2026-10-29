@@ -51,7 +51,7 @@ def download(filename):
         url = f"{SOURCE_BASE_URL}/{SOURCE_FOLDERS[filename]}/{filename}"
         logger.info(f"Descargando {url}")
         request = urllib.request.Request(url, headers=HEADERS)
-        with urllib.request.urlopen(request, timeout=120) as response:
+        with urllib.request.urlopen(request, timeout=120) as response:  # nosec B310
             path.write_bytes(response.read())
 
     return path

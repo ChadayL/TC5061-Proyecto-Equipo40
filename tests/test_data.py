@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from mibici.dataset import load_raw
+from mibici.dataset import check_required_files, load_raw
 from mibici.features import (
     build_p1_features,
     build_p2_features,
@@ -13,6 +13,11 @@ from mibici.pipeline import load_stage
 
 # Muestra de los archivos reales para probar la carga sin leer toda la partición.
 SAMPLE_ROWS = 1_000
+try:
+    check_required_files()
+    HAS_INGESTED_DATA = True
+except FileNotFoundError:
+    HAS_INGESTED_DATA = False
 
 
 def make_trips(rows):
@@ -42,6 +47,7 @@ def make_stations(capacities):
 # CARGA Y PIPELINE (archivos reales, muestra pequeña)
 # ============================================================
 
+@pytest.mark.skipif(not HAS_INGESTED_DATA, reason="requiere ejecutar la ingesta local")
 def test_load_raw():
     datos = load_raw(nrows=SAMPLE_ROWS)
 
@@ -51,6 +57,7 @@ def test_load_raw():
 
 
 @pytest.mark.parametrize("stage", ["raw", "structure", "quality_fixes", "common"])
+@pytest.mark.skipif(not HAS_INGESTED_DATA, reason="requiere ejecutar la ingesta local")
 def test_pipeline_stages(stage):
     datos = load_stage(stage, nrows=SAMPLE_ROWS)
 

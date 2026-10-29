@@ -49,6 +49,9 @@ extend-select = ["I"]  # Add import sorting
 known-first-party = ["mibici"]
 force-sort-within-sections = true
 
+[project.optional-dependencies]
+quality = ["deepchecks==0.19.1", "bandit==1.9.4", "pip-audit==2.10.1", "setuptools==80.9.0"]
+
 [dependency-groups]
 dev = [
     "ipykernel>=7.3.0",

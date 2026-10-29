@@ -1,6 +1,7 @@
 import hashlib
 import os
-import subprocess
+import shutil
+import subprocess  # nosec B404
 
 import matplotlib.pyplot as plt
 import mlflow
@@ -17,11 +18,13 @@ TEAM_NAME = "Equipo 40"
 
 def build_run_tags(tags):
     """Añade a las etiquetas del run el equipo y el commit del código."""
+    git_executable = shutil.which("git")
     try:
-        commit = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"],
-            cwd=PROJ_ROOT,
-            text=True,
+        if git_executable is None:
+            raise FileNotFoundError("git no está en PATH")
+        # Comando constante, sin shell ni entrada de usuario.
+        commit = subprocess.check_output(  # nosec B603
+            [git_executable, "rev-parse", "HEAD"], cwd=PROJ_ROOT, text=True
         ).strip()
     except (FileNotFoundError, subprocess.CalledProcessError):
         # MLflow Projects en Windows puede no heredar el PATH de Git.
