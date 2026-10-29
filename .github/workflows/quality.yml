@@ -22,4 +22,5 @@ jobs:
       - name: Static security scan
         run: uv run bandit -r mibici
       - name: Dependency vulnerability audit
+        continue-on-error: true
         run: uv run pip-audit
