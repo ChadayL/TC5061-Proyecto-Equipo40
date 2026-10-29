@@ -197,3 +197,12 @@ mlartifacts/
 
 # Generated predictions
 predicciones_p1.csv
+
+# Reportes locales de validación (pueden contener detalles estadísticos)
+/reports/data_quality/
+
+# Local uv cache
+.uv-cache/
+
+# Temporary audit tool environments
+.tmp/
