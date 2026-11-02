@@ -266,5 +266,3 @@ Excluir del historial de Git los datos, modelos serializados, `.env`, `mlruns/`,
 ![Ejecución de deepcheck - Data Integrity Suite ](docs/evidence/Data_Integ.png)
 [Salida de Bandit](docs/evidence/bandit.txt)
 [Salida de pip-audit](docs/evidence/pip-audit.txt)
-
-
