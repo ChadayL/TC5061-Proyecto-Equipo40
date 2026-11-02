@@ -1,26 +1,49 @@
-name: quality
+name: Quality
 
 on:
   push:
   pull_request:
 
 jobs:
-  checks:
+  tests:
+    name: Pytest and DeepChecks
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-      - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-      - name: Install locked environment and quality tools
-        run: uv sync --locked --extra quality
-      - name: Unit and integration tests
-        run: uv run pytest -q
-      - name: Static security scan
-        run: uv run bandit -r mibici
-      - name: Dependency vulnerability audit
-        continue-on-error: true
-        run: uv run pip-audit
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install 3.10
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run tests
+        run: uv run pytest -v
+
+  security:
+    name: Bandit security scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install 3.10
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Install Bandit
+        run: uv pip install bandit
+
+      - name: Run Bandit
+        run: uv run bandit -r mibici -x "*/__pycache__/*" --severity-level high

@@ -16,13 +16,14 @@ classifiers = [
     "License :: OSI Approved :: MIT License"
 ]
 dependencies = [
+    "deepchecks>=0.19.1",
     "ipython",
     "jupyterlab",
     "loguru",
     "matplotlib",
     "mlflow>=3.17.1",
     "notebook",
-    "numpy",
+    "numpy<2",
     "pandas",
     "pip",
     "pyarrow>=25.0.1",
@@ -31,6 +32,7 @@ dependencies = [
     "PyYAML==6.0.3",
     "ruff",
     "scikit-learn",
+    "setuptools<81",
     "tqdm",
     "typer",
 ]
@@ -49,11 +51,9 @@ extend-select = ["I"]  # Add import sorting
 known-first-party = ["mibici"]
 force-sort-within-sections = true
 
-[project.optional-dependencies]
-quality = ["deepchecks==0.19.1", "bandit==1.9.4", "pip-audit==2.10.1", "setuptools>=84.1.0"]
-
 [dependency-groups]
 dev = [
+    "bandit>=1.9.4",
     "ipykernel>=7.3.0",
 ]
 

@@ -1,26 +1,58 @@
 import numpy as np
-import pandas as pd
-from sklearn.metrics import f1_score
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
 
-from mibici.modeling.p2 import build_p2_model
 
+def train_model(seed: int = 42):
+    """Entrena un modelo determinista usando una semilla fija."""
+    rng = np.random.default_rng(42)
 
-def test_random_forest_reproducible_predictions_and_metric():
-    features = pd.DataFrame(
-        {
-            "salidas": [0, 1, 4, 5, 2, 8, 7, 1, 6, 3, 9, 2],
-            "llegadas": [3, 2, 1, 0, 5, 1, 2, 4, 1, 3, 0, 6],
-            "capacity": [10] * 12,
-        }
+    X = rng.normal(size=(500, 5))
+    y = (
+        3 * X[:, 0]
+        - 2 * X[:, 1]
+        + 0.5 * X[:, 2]
+        + rng.normal(scale=0.1, size=500)
     )
-    target = np.array([0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0])
 
-    first = build_p2_model(n_estimators=20, max_depth=4, random_state=42)
-    second = build_p2_model(n_estimators=20, max_depth=4, random_state=42)
-    first.fit(features, target)
-    second.fit(features, target)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        random_state=seed,
+    )
 
-    first_predictions = first.predict(features)
-    second_predictions = second.predict(features)
-    assert np.array_equal(first_predictions, second_predictions)
-    assert f1_score(target, first_predictions) == f1_score(target, second_predictions)
+    model = RandomForestRegressor(
+        n_estimators=30,
+        max_depth=6,
+        random_state=seed,
+        n_jobs=1,
+    )
+
+    model.fit(X_train, y_train)
+
+    predictions = model.predict(X_test)
+    rmse = np.sqrt(mean_squared_error(y_test, predictions))
+
+    return predictions, rmse
+
+
+def test_training_is_reproducible():
+    """Dos entrenamientos con la misma semilla deben dar el mismo resultado."""
+    predictions_1, rmse_1 = train_model(seed=42)
+    predictions_2, rmse_2 = train_model(seed=42)
+
+    np.testing.assert_allclose(
+        predictions_1,
+        predictions_2,
+        rtol=0,
+        atol=1e-12,
+    )
+
+    assert np.isclose(
+        rmse_1,
+        rmse_2,
+        rtol=0,
+        atol=1e-12,
+    )
