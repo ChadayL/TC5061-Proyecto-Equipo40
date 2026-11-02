@@ -174,7 +174,11 @@ uv run --extra quality python -m mibici.validation
 
 El comando genera `reports/data_quality/integridad_train.html`, `comparacion_train_validation.html` y `resumen.json`. Deepchecks revisa integridad en train y compara train contra validation para buscar problemas de partición y drift. El resumen reporta tipos, nulos y duplicados; los viajes, identificadores de usuario y reportes generados no se versionan. Si los datos locales aún no están ingeridos, la validación indica los archivos que faltan.
 
-En una ejecución de referencia con 1,000 filas (--sample-rows 1000), PyTest terminó con **19 pruebas aprobadas**; Deepchecks ejecutó las suites de integridad y comparación (12 chequeos cada una). En esa muestra se observaron nulos en Genero y filas duplicadas; son hallazgos reportados para análisis, no filas eliminadas automáticamente. Bandit terminó sin hallazgos de seguridad reportables; hay supresiones explícitas para el acceso al host fijo MiBici y el comando fijo git rev-parse (sin shell ni entrada del usuario).
+En la ejecución documentada con una muestra de 1,000 viajes por partición, Pytest aprobó **26 pruebas**. DeepChecks generó los reportes de integridad y comparación entre train y validation.
+
+En el resumen de calidad, train tuvo 6 filas duplicadas y 5 valores faltantes en `Genero`; validation tuvo 0 filas duplicadas y 4 valores faltantes en `Genero`. En el reporte de integridad, los duplicados representaron 0.6%, dentro del límite configurado de 5%.
+
+En la comparación train/validation, **Multivariate Drift detectó un valor de 0.35**, superior al límite de 0.25. Feature Drift pasó: el mayor drift categórico fue 0.11 y el numérico 0.12. Estos resultados se reportan para revisión; DeepChecks no elimina ni corrige automáticamente las filas.
 
 Escanea vulnerabilidades conocidas de dependencias y patrones de seguridad en el código:
 
@@ -253,3 +257,14 @@ Excluir del historial de Git los datos, modelos serializados, `.env`, `mlruns/`,
 - **Pendiente en P2:** fórmula y umbral de riesgo, y la inclusión de estaciones sin actividad.
 - **Pendiente en P3:** normalizar por días activos y definir el uso del catálogo de estaciones.
 - **Otros:** límites de edad (H-co-006), elegibilidad de estaciones en el calendario de P1 (H-co-010).
+
+
+## Evidencia
+![Ejecución de Pytest](docs/evidence/pytest.png)
+![Ejecución de deepcheck -  ](docs/evidence/data_quality_report.png)
+![Ejecución de deepcheck - Train Test Validation Suite ](docs/evidence/Train_Test_Val.png)
+![Ejecución de deepcheck - Data Integrity Suite ](docs/evidence/Data_Integ.png)
+[Salida de Bandit](docs/evidence/bandit.txt)
+[Salida de pip-audit](docs/evidence/pip-audit.txt)
+
+

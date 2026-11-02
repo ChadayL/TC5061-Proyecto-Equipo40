@@ -54,12 +54,12 @@ def run_deepchecks(train: pd.DataFrame, validation: pd.DataFrame, output_dir: Pa
     output_dir.mkdir(parents=True, exist_ok=True)
     train_dataset = Dataset(train, cat_features=["Genero"], datetime_name="Inicio_del_viaje")
     validation_dataset = Dataset(validation, cat_features=["Genero"], datetime_name="Inicio_del_viaje")
-    train_result = data_integrity().run(train_dataset, with_display=False)
+    train_result = data_integrity().run(train_dataset)
     split_result = train_test_validation(
         random_state=42, n_samples=min(len(train), len(validation))
-    ).run(train_dataset, validation_dataset, with_display=False)
-    train_result.save_as_html(str(output_dir / "integridad_train.html"))
-    split_result.save_as_html(str(output_dir / "comparacion_train_validation.html"))
+    ).run(train_dataset, validation_dataset)
+    train_result.save_as_html(str(output_dir / "integridad_train.html"), as_widget=False,)
+    split_result.save_as_html(str(output_dir / "comparacion_train_validation.html"), as_widget=False,)
 
     summary = {
         "data_version": get_data_version(),
