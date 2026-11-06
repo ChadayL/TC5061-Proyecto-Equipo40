@@ -240,6 +240,8 @@ Usa `mlflow run` para todas las corridas; consulta la sección [Proyecto MLflow 
 
 ## Documentación del equipo
 
+- [Servir el modelo P1 con FastAPI y Docker Compose](docs/servir-p1.md).
+
 - [Cómo funcionan los stages y cómo integrar transformaciones](docs/flujo_datos.md).
 - [Cómo registrar hallazgos](references/hallazgos/README.md).
 

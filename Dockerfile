@@ -24,7 +24,8 @@ ENTRYPOINT ["minio"]
 FROM python:3.10-slim AS inference
 ARG MODEL_DIR=build/serving
 COPY ${MODEL_DIR}/requirements.txt /tmp/model-requirements.txt
-RUN pip install --no-cache-dir -c /tmp/model-requirements.txt \
+RUN pip install --no-cache-dir pip==26.2.1 \
+    && pip install --no-cache-dir --resume-retries 5 -c /tmp/model-requirements.txt \
     mlflow scikit-learn pandas numpy scipy cloudpickle loguru python-dotenv typer
 COPY ${MODEL_DIR}/ /opt/model/
 EXPOSE 8080
