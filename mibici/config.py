@@ -57,9 +57,10 @@ def monthly_trip_files(start: str, end: str) -> tuple[str, ...]:
     
 TRIP_FILES = monthly_trip_files(DATA_START, DATA_END)  
 
-STATIONS_FILE = "nomenclatura_2026_09.csv"
+STATIONS_FILE = "nomenclatura_2026_10.csv"
 
 CSV_ENCODINGS = {
+    STATIONS_FILE: "cp1252",
     "datos_abiertos_2024_10.csv": "cp1252",
     "datos_abiertos_2024_11.csv": "cp1252",
     "datos_abiertos_2024_12.csv": "cp1252",
@@ -104,7 +105,7 @@ SOURCE_FOLDERS = {
     "datos_abiertos_2026_07.csv": 129006,
     "datos_abiertos_2026_08.csv": 130362,
     "datos_abiertos_2026_09.csv": 131825,
-    "nomenclatura_2026_09.csv": 1118,
+    STATIONS_FILE: 1118,
 }
 
 # Salida de la ingesta: un Parquet por mes y el catálogo, ya normalizados.

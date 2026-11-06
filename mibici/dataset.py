@@ -87,7 +87,7 @@ def ingest():
         path = download(filename)
 
         if filename == STATIONS_FILE:
-            data = pd.read_csv(path, encoding="utf-8")
+            data = pd.read_csv(path, encoding=CSV_ENCODINGS.get(filename, "utf-8-sig"))
             data.to_parquet(STATIONS_PARQUET, index=False)
         else:
             data = read_trips(filename)

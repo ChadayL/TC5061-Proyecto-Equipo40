@@ -1,0 +1,9 @@
+**
+!Dockerfile
+!build/
+!build/serving/
+!build/serving/**
+!mibici/
+!mibici/api/
+!mibici/api/*.py
+!mibici/api/requirements.txt

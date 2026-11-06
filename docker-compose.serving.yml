@@ -1,0 +1,23 @@
+# Servicios de predicción de MiBici.
+name: mibici-serving
+
+services:
+  api:
+    build:
+      context: .
+      target: api
+    image: mibici-api:local
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    depends_on:
+      - inference
+
+  inference:
+    build:
+      context: .
+      target: inference
+      args:
+        MODEL_DIR: ${MODEL_DIR:-build/serving}
+    image: mibici-inference:${MODEL_TAG:-p1-v1}
+    ports:
+      - "127.0.0.1:${INFERENCE_PORT:-8080}:8080"
