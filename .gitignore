@@ -208,3 +208,6 @@ predicciones_p1.csv
 
 # Temporary audit tool environments
 .tmp/
+
+# Local MLflow tracking data
+.local-mlflow/
