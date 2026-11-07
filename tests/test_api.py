@@ -117,3 +117,26 @@ def test_predict_invalid_inference_response(monkeypatch):
     response = client.post("/predict", json=VALID_INPUT)
 
     assert response.status_code == 502
+
+def test_predict_reproducibility(monkeypatch):
+    """La misma entrada debe producir la misma predicción."""
+
+    calls = []
+
+    def fake_post(url, json, timeout):
+        calls.append(json)
+        return mock_response(
+            httpx.Request("POST", url),
+            payload={"predictions": [46.3]},
+        )
+
+    monkeypatch.setattr("mibici.api.main.httpx.post", fake_post)
+
+    response_1 = client.post("/predict", json=VALID_INPUT)
+    response_2 = client.post("/predict", json=VALID_INPUT)
+
+    assert response_1.status_code == 200
+    assert response_2.status_code == 200
+    assert response_1.json() == response_2.json()
+    assert len(calls) == 2
+    assert calls[0] == calls[1]
