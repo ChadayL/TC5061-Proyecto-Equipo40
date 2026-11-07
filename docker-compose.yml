@@ -1,0 +1,72 @@
+services:
+  ds_workspace:
+    build:
+      context: .
+      target: jupyter
+    image: mibici-jupyter:local
+    ports:
+      - "127.0.0.1:8888:8888"
+    volumes:
+      - .:/workspace/mibici
+      - mibici_python:/opt/mibici-venv
+      - uv_cache:/root/.cache/uv
+    env_file: ./configs/env/jupyter.env
+    working_dir: /workspace/mibici
+    networks:
+      - mlops_network
+    depends_on:
+      - mlflow
+
+  mlflow:
+    build:
+      context: .
+      target: mlflow
+    image: kaggle-mlflow:local
+    container_name: mlflow_server
+    env_file: ./configs/env/mlflow.env
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    command:
+      - mlflow
+      - server
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5000"
+      - --allowed-hosts
+      - mlflow:5000,localhost:5000,127.0.0.1:5000
+      - --backend-store-uri
+      - sqlite:////mlflow/mlflow.db
+      - --serve-artifacts
+      - --artifacts-destination
+      - s3://mlflow-artifacts
+    networks:
+      - mlops_network
+    depends_on:
+      - minio
+
+  minio:
+    build:
+      context: .
+      target: minio
+    image: mibici-minio:2025-10-15
+    container_name: minio_server
+    command: server /data --console-address ":9001"
+    env_file: ./configs/env/minio.env
+    ports:
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - mlops_network
+
+networks:
+  mlops_network:
+    driver: bridge
+volumes:
+  mlflow_data:
+  minio_data:
+  mibici_python:
+  uv_cache:

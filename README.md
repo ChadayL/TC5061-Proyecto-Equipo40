@@ -120,12 +120,12 @@ Fuente: [datos abiertos de MiBici](https://mibici.net/es/datos-abiertos/). Un so
 uv run mlflow run --experiment-name mibici-equipo40 . --env-manager local -e ingest
 ```
 
-1. **Descarga** a `data/raw/` los 24 meses de viajes (`datos_abiertos_2024_10.csv` … `datos_abiertos_2026_09.csv`) y la nomenclatura `nomenclatura_2026_09.csv`. Omite los archivos que ya existen.
+1. **Descarga** a `data/raw/` los 24 meses de viajes (`datos_abiertos_2024_10.csv` … `datos_abiertos_2026_09.csv`) y el catálogo de estaciones `nomenclatura_2026_10.csv`. Omite los archivos que ya existen.
 2. **Normaliza** cada archivo: su codificación (UTF-8 o cp1252), nombres de columna sin espacios y fechas en sus dos formatos (`dd/mm/aaaa HH:MM` en octubre de 2024, `aaaa-mm-dd HH:MM:SS` en el resto) a `datetime`.
 3. **Guarda** un Parquet por mes en `data/interim/viajes/` y el catálogo en `data/interim/estaciones.parquet`.
 4. **Versiona** los datos en [`references/data_manifest.json`](references/data_manifest.json), que sí se sube a Git: número de registros y sha256 de cada archivo, más una `data_version` que se registra en cada run de MLflow. Si MiBici cambia algún archivo, cambian su hash y la versión, y `git diff` del manifiesto lo muestra.
 
-Resultado actual: 24 meses, 9,043,925 viajes, 484 estaciones, versión `9ca985ed8716`.
+Resultado de referencia con el catálogo anterior: 24 meses, 9,043,925 viajes, 484 estaciones, versión `9ca985ed8716`. El catálogo de octubre contiene 470 estaciones. La versión efectiva se genera al ejecutar la ingesta.
 
 El periodo (`DATA_START`, `DATA_END`), las URLs (`SOURCE_FOLDERS`), la codificación y el formato de fecha de cada archivo se configuran en `mibici/config.py`.
 
@@ -239,6 +239,8 @@ Usa `mlflow run` para todas las corridas; consulta la sección [Proyecto MLflow 
 | `data/` | Datos locales (no se versionan). |
 
 ## Documentación del equipo
+
+- [Servir el modelo P1 con FastAPI y Docker Compose](docs/servir-p1.md).
 
 - [Cómo funcionan los stages y cómo integrar transformaciones](docs/flujo_datos.md).
 - [Cómo registrar hallazgos](references/hallazgos/README.md).
