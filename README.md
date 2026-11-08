@@ -255,3 +255,107 @@ Excluir del historial de Git los datos, modelos serializados, `.env`, `mlruns/`,
 - **Pendiente en P2:** fórmula y umbral de riesgo, y la inclusión de estaciones sin actividad.
 - **Pendiente en P3:** normalizar por días activos y definir el uso del catálogo de estaciones.
 - **Otros:** límites de edad (H-co-006), elegibilidad de estaciones en el calendario de P1 (H-co-010).
+
+## Despliegue del modelo P1 con FastAPI y Docker
+
+El proyecto expone el modelo de regresión P1 mediante una API REST desarrollada con FastAPI, validación Pydantic y un servicio de inferencia MLflow.
+
+### Estrategia de despliegue
+
+Se utiliza **inferencia en tiempo real**, ya que cada petición HTTP recibe una predicción inmediata de salidas de bicicletas para una estación y sus variables de entrada.
+
+El modelo se recupera desde **MLflow Model Registry** por nombre y versión (`models:/mibici-p1/1`) y se empaqueta dentro de la imagen Docker de inferencia. Por lo tanto, los contenedores no necesitan conectarse al Registry durante cada predicción.
+
+### 1. Descargar el modelo registrado
+
+Con el servidor MLflow disponible y el modelo `mibici-p1` registrado:
+
+```bash
+export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
+
+uv run python -c '
+from pathlib import Path
+import mlflow
+
+destination = Path("build/serving")
+destination.mkdir(parents=True, exist_ok=True)
+
+mlflow.artifacts.download_artifacts(
+    artifact_uri="models:/mibici-p1/1",
+    dst_path=str(destination)
+)
+'
+```
+
+Verificar que existan `build/serving/MLmodel` y `build/serving/requirements.txt`.
+
+### 2. Construir las imágenes OCI
+
+Se utiliza el archivo `Dockerfile`, compatible con Docker, y `docker-compose.serving.yml`.
+
+```bash
+docker compose -f docker-compose.serving.yml build
+```
+
+Se construyen las imágenes:
+
+- `mibici-api:local`: aplicación FastAPI.
+- `mibici-inference:p1-v1`: modelo P1 servido mediante MLflow.
+
+### 3. Levantar los contenedores
+
+```bash
+docker compose -f docker-compose.serving.yml up -d
+docker compose -f docker-compose.serving.yml ps
+```
+
+Servicios publicados en el equipo local:
+
+- FastAPI: `http://127.0.0.1:8000`
+- MLflow Inference: `http://127.0.0.1:8080`
+
+Documentación interactiva de la API: `http://127.0.0.1:8000/docs`.
+
+### 4. Consumir la API
+
+Ejemplo de petición HTTP:
+
+```bash
+curl -i -X POST http://127.0.0.1:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "station_id": 2,
+    "day_of_week": 1,
+    "departures_lag_1": 76.0,
+    "departures_lag_7": 21.0,
+    "departures_mean_7": 55.857142857142854
+  }'
+```
+
+Respuesta obtenida durante la validación:
+
+**HTTP 200 OK**
+
+```json
+{
+  "predicted_departures": 46.298935294225515
+}
+```
+
+FastAPI valida las entradas con Pydantic y devuelve la predicción en JSON. Los datos inválidos generan respuestas de validación HTTP 422.
+
+### 5. Evidencia y pruebas
+
+- [Captura de la API respondiendo desde Docker](evidence/p1-docker-api-success.png).
+- [Respuesta JSON de inferencia real](evidence/p1-docker-prediction.json).
+- [Reporte técnico de validación](docs/validacion-despliegue-p1.md).
+- [Documentación adicional del servicio](docs/servir-p1.md).
+
+Durante la validación local se ejecutaron 34 pruebas automatizadas satisfactoriamente y se comprobó una petición real HTTP 200 contra el modelo P1 ejecutándose en Docker.
+
+### 6. Detener los servicios
+
+```bash
+docker compose -f docker-compose.serving.yml down
+```
+
