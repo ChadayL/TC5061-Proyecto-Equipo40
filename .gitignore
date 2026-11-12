@@ -202,6 +202,7 @@ predicciones_p1.csv
 
 # Reportes locales de validación (pueden contener detalles estadísticos)
 /reports/data_quality/
+/reports/monitoring/
 
 # Local uv cache
 .uv-cache/

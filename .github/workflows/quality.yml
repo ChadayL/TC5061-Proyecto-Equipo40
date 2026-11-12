@@ -16,7 +16,7 @@ jobs:
         with:
           enable-cache: true
       - name: Install locked environment and quality tools
-        run: uv sync --locked --extra quality
+        run: uv sync --locked --extra quality --extra monitoring
       - name: Unit and integration tests
         run: uv run pytest -q
       - name: Static security scan
