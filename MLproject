@@ -31,3 +31,10 @@ entry_points:
     parameters:
       question: {type: str, default: p1}
     command: "python -m mibici.modeling.registry --problem {question}"
+
+  monitor-p1:
+    parameters:
+      candidate_model: {type: str, default: ridge}
+      alpha: {type: float, default: 1.0}
+    command: >-
+      python -m mibici.monitoring --candidate-model {candidate_model} --alpha {alpha}

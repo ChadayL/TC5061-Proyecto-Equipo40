@@ -51,6 +51,7 @@ force-sort-within-sections = true
 
 [project.optional-dependencies]
 quality = ["deepchecks==0.19.1", "bandit==1.9.4", "pip-audit==2.10.1", "setuptools>=84.1.0"]
+monitoring = ["evidently==0.7.23"]
 
 [dependency-groups]
 dev = [
