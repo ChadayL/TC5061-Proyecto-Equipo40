@@ -15,7 +15,17 @@ de MinIO descarga el compilador y las dependencias de Go.
 Iniciar Docker Desktop. Configurar MINIO_ROOT_USER y MINIO_ROOT_PASSWORD en .env, sin publicarlas.
 Cada servicio lee su propio archivo en configs/env/. En un clon nuevo, copiar
 cada archivo .env.example a su nombre sin .example. Git ignora esas copias
-locales y el .env de la raíz, donde se definen las credenciales.
+locales y el .env de la raíz. Define MINIO_ROOT_USER y MINIO_ROOT_PASSWORD una sola vez en la raíz. Compose pasa esos valores a MinIO y los asigna a AWS_ACCESS_KEY_ID y AWS_SECRET_ACCESS_KEY en MLflow.
+
+También puedes ajustar en el .env de la raíz los valores de Jupyter y MLflow:
+
+~~~dotenv
+MLFLOW_TRACKING_URI=http://mlflow:5000
+MLFLOW_EXPERIMENT_NAME=TC5061-Proyecto-Equipo40
+MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+AWS_DEFAULT_REGION=us-east-1
+~~~
+
 Si se reutilizan modelos anteriores, conservar el nombre de proyecto Compose original con
 docker compose -p NOMBRE_ANTERIOR en todos los comandos: cambiarlo crea otros volúmenes.
 No ejecutar down -v ni levantar dos servidores MLflow sobre el mismo SQLite.
@@ -47,3 +57,26 @@ Seleccionar el kernel Python 3 del contenedor. El experimento predeterminado es
 TC5061-Proyecto-Equipo40; MLFLOW_EXPERIMENT_NAME permite cambiarlo desde .env.
 Las dependencias de MiBici se fijan con uv.lock. Las imágenes base, uv y boto3
 todavía no están fijadas por digest o versión en el Dockerfile de desarrollo.
+
+## Estructura
+
+| Ruta | Responsabilidad |
+|---|---|
+| `mibici/config.py` | Rutas, periodo, particiones, archivos y MLflow. |
+| `mibici/dataset.py` | Ingesta (descarga, Parquet y manifiesto), particiones temporales y carga. |
+| `mibici/pipeline.py` | Orden de stages y `load_stage()`. |
+| `mibici/data_preparation/` | Funciones de preparación, un `run()` por etapa, encoder y scaler. |
+| `mibici/features.py` | Construcción de variables por pregunta. |
+| `mibici/modeling/p1.py`, `p2.py`, `p3.py` | Datos, modelo y evaluación de cada pregunta. |
+| `mibici/modeling/train.py` | Línea de comandos de entrenamiento. |
+| `mibici/modeling/tracking.py` | Registro en MLflow. |
+| `mibici/plots.py` | Gráficas generadas por los entrenamientos. |
+| `notebooks/` | Comprensión, preparación y experimentación. |
+| `references/hallazgos/` | Hallazgos de datos y su seguimiento. |
+| `data/` | Datos locales (no se versionan). |
+
+## Colaboración
+
+Trabajar en ramas por tarea (`feat/`, `fix/`, `docs/`) e integrar mediante PR revisado. Coordinar una persona a la vez por notebook y usar nombres `1.0-iniciales-descripcion.ipynb`.
+
+Registrar los hallazgos con la [guía del equipo](../references/hallazgos/README.md). Mantener fuera de Git los datos de viajes, modelos serializados, `.env`, `mlruns/`, `mlflow.db` y `mlartifacts/`.

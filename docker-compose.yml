@@ -1,3 +1,4 @@
+name: mibici-mlops
 services:
   ds_workspace:
     build:
@@ -22,7 +23,7 @@ services:
       context: .
       target: mlflow
     image: kaggle-mlflow:local
-    container_name: mlflow_server
+    #container_name: mlflow_server
     env_file: ./configs/env/mlflow.env
     ports:
       - "5000:5000"
@@ -52,7 +53,7 @@ services:
       context: .
       target: minio
     image: mibici-minio:2025-10-15
-    container_name: minio_server
+    #container_name: minio_server
     command: server /data --console-address ":9001"
     env_file: ./configs/env/minio.env
     ports:
