@@ -300,6 +300,12 @@ def extract_column_drift(report: dict) -> dict:
                 "stattest_name": config.get("method"),
                 "stattest_threshold": threshold,
             }
+    missing = set(REPORT_COLUMNS).difference(found)
+    if missing:
+        raise ValueError(
+            f"Evidently no devolvió métricas de drift para: {sorted(missing)}"
+        )
+
     return found
 
 
@@ -411,6 +417,18 @@ def evidently_snapshot(reference, current, summary, name):
     return report.run(current_data=current, reference_data=reference, name=name)
 
 
+def recommendation_from_ci(low: float, high: float) -> str:
+    """Recomienda la candidata solo si el IC de delta RMSE la favorece."""
+    if not np.isfinite(low) or not np.isfinite(high) or low > high:
+        raise ValueError("El intervalo de confianza no es válido.")
+
+    if high < 0:
+        return "candidate"
+    if low > 0:
+        return "production"
+    return "production (resultado inconcluso)"
+
+
 def run_monitoring(candidate_model: str = "ridge", alpha: float = P1_RIDGE_ALPHA) -> dict:
     """Run P1 drift report and register an A/B candidate without moving production."""
     if candidate_model not in {"linear_regression", "ridge"}:
@@ -459,13 +477,7 @@ def run_monitoring(candidate_model: str = "ridge", alpha: float = P1_RIDGE_ALPHA
     )
     low = bootstrap["daily_cluster_bootstrap_95ci_low"]
     high = bootstrap["daily_cluster_bootstrap_95ci_high"]
-    if high < 0:
-        recommendation = "candidate"
-    elif low > 0:
-        recommendation = "production"
-    else:
-        recommendation = "production (resultado inconcluso)"
-
+    recommendation = recommendation_from_ci(low, high)
     drift_frame = datasets["current"]
     reference_frame = datasets["reference"]
     snapshot = evidently_snapshot(
