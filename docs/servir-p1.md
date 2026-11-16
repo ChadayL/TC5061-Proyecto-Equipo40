@@ -1,4 +1,6 @@
-# Servir P1 con MLflow Model Serving
+# Despliegue de P1 con FastAPI y Docker
+
+FastAPI valida las entradas con Pydantic y llama a MLflow Serving para devolver una predicción por petición. La imagen de inferencia incluye una versión concreta del modelo y la carga al iniciar.
 
 Desde la raíz del repositorio y con el entorno de desarrollo activo, descargar la versión 1 del Registry.
 
@@ -75,3 +77,13 @@ Probar cada puerto con su propio serving_input_example.json. Los tres servicios
 exponen /invocations y cada uno usa la firma de su modelo. Cuando se integre
 FastAPI, se pueden declarar los tres servicios en un Compose compartido,
 retirar sus puertos publicados y dirigir cada petición al servicio correspondiente.
+
+## Evidencia y pruebas
+
+Durante la validación local se reportaron 34 pruebas aprobadas y una petición real a FastAPI con respuesta HTTP 200. Las entradas inválidas reciben HTTP 422. Consulta el [reporte técnico](validacion-despliegue-p1.md), la [captura de la API](../evidence/p1-docker-api-success.png) y la [respuesta JSON de inferencia](../evidence/p1-docker-prediction.json).
+
+## Detener los servicios
+
+```powershell
+docker compose -f docker-compose.serving.yml down
+```

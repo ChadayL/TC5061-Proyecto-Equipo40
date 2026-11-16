@@ -1,6 +1,5 @@
 # Servicios de predicción de MiBici.
 name: mibici-serving
-
 services:
   api:
     build:

@@ -2,6 +2,7 @@ import hashlib
 import json
 import math
 import urllib.request
+from datetime import date
 
 import pandas as pd
 from loguru import logger
@@ -25,6 +26,7 @@ from mibici.config import (
     TRIP_FILES,
     TRIPS_PARQUET_DIR,
     VALIDATION_RATIO,
+    monthly_trip_files,
 )
 
 app = typer.Typer()
@@ -114,6 +116,27 @@ def ingest():
     logger.success(f"Ingesta completa. Versión de los datos: {data_version}")
 
 
+@app.command()
+def ingest_monitoring_month(month: str):
+    """Convierte un mes adicional a Parquet para cargarlo por fechas."""
+    try:
+        start = date.fromisoformat(f"{month}-01")
+    except ValueError as exc:
+        raise typer.BadParameter("Usa el formato AAAA-MM.") from exc
+
+    filename = f"datos_abiertos_{start:%Y_%m}.csv"
+    if filename not in SOURCE_FOLDERS or filename in TRIP_FILES:
+        raise typer.BadParameter("El mes debe estar configurado fuera del periodo histórico.")
+
+    RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    TRIPS_PARQUET_DIR.mkdir(parents=True, exist_ok=True)
+    download(filename)
+    trips = read_trips(filename)
+    path = trips_parquet(filename)
+    trips.to_parquet(path, index=False)
+    logger.success(f"{path.relative_to(PROJ_ROOT)}: {len(trips):,} viajes")
+
+
 def get_data_version():
     """Versión de los datos del manifiesto; se registra en cada run de MLflow."""
     return json.loads(DATA_MANIFEST.read_text(encoding="utf-8"))["data_version"]
@@ -123,15 +146,16 @@ def get_data_version():
 # CARGA POR PARTICIÓN
 # ============================================================
 
-def check_required_files():
+def check_required_files(trip_files=TRIP_FILES):
     """Informa todos los Parquet de la ingesta que faltan."""
-    paths = [trips_parquet(filename) for filename in TRIP_FILES] + [STATIONS_PARQUET]
+    paths = [trips_parquet(filename) for filename in trip_files] + [STATIONS_PARQUET]
     missing = [path for path in paths if not path.is_file()]
 
     if missing:
         details = "\n".join(f"  - {path.relative_to(PROJ_ROOT)}" for path in missing)
         raise FileNotFoundError(
-            f"Faltan datos ingeridos:\n{details}\nEjecuta: python -m mibici.dataset ingest"
+            f"Faltan datos ingeridos:\n{details}\n"
+            "Usa la ingesta histórica o ingest-monitoring-month, según corresponda."
         )
 
 
@@ -174,34 +198,37 @@ def get_split_periods():
 def load_raw(
     nrows: int | None = None,
     split: str = "train",
+    *,
+    start=None,
+    end_exclusive=None,
 ) -> dict[str, pd.DataFrame]:
-    """Carga los viajes de una partición (por Inicio_del_viaje) y el catálogo ingeridos."""
-    periods = get_split_periods()
-
-    if split not in periods:
-        raise ValueError(f"Partición desconocida: {split!r}. Opciones: {list(periods)}")
-
+    """Carga viajes por fecha de inicio y el catálogo ingerido."""
     if nrows is not None and nrows < 1:
         raise ValueError("nrows debe ser positivo o None.")
 
-    check_required_files()
+    by_date = start is not None or end_exclusive is not None
+    if not by_date:
+        periods = get_split_periods()
+        if split not in periods:
+            raise ValueError(f"Partición desconocida: {split!r}. Opciones: {list(periods)}")
+        check_required_files()
+        start, end_exclusive = periods[split]
+        selection = f"Partición {split}"
+    else:
+        if start is None or end_exclusive is None:
+            raise ValueError("Indica start y end_exclusive para cargar por fechas.")
+        start, end_exclusive = pd.Timestamp(start), pd.Timestamp(end_exclusive)
+        if not start < end_exclusive or any(
+            day.tzinfo is not None or day != day.normalize()
+            for day in (start, end_exclusive)
+        ):
+            raise ValueError("Usa fechas completas sin zona horaria, con start anterior al fin.")
+        selection = "Ventana por fechas"
 
-    start, end_exclusive = periods[split]
-
-    selected_months = set(
-        pd.period_range(
-            start,
-            end_exclusive - pd.Timedelta(days=1),
-            freq="M",
-        ).strftime("%Y_%m")
-    )
-
-    selected_files = [
-        filename
-        for filename in TRIP_FILES
-        if filename.removeprefix("datos_abiertos_").removesuffix(".csv")
-        in selected_months
-    ]
+    end_inclusive = end_exclusive - pd.Timedelta(days=1)
+    selected_files = monthly_trip_files(start.date().isoformat(), end_inclusive.date().isoformat())
+    if by_date:
+        check_required_files(selected_files)
 
     tables = []
     # nrows limita el total de la partición, no cada archivo.
@@ -230,15 +257,12 @@ def load_raw(
             loaded_rows += len(selected)
 
     if not tables:
-        raise ValueError(f"No se encontraron viajes para la partición {split!r}.")
+        raise ValueError(f"No se encontraron viajes entre {start.date()} y {end_inclusive.date()}.")
 
     trips = pd.concat(tables, ignore_index=True)
     stations = pd.read_parquet(STATIONS_PARQUET)
 
-    logger.info(
-        f"Partición {split}: {start.date()} a "
-        f"{(end_exclusive - pd.Timedelta(days=1)).date()}"
-    )
+    logger.info(f"{selection}: {start.date()} a {end_inclusive.date()}")
     logger.info(f"Viajes cargados: {len(trips):,}")
 
     return {

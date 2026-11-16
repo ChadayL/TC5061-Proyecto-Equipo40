@@ -105,6 +105,7 @@ SOURCE_FOLDERS = {
     "datos_abiertos_2026_07.csv": 129006,
     "datos_abiertos_2026_08.csv": 130362,
     "datos_abiertos_2026_09.csv": 131825,
+    "datos_abiertos_2026_10.csv": 133188,
     STATIONS_FILE: 1118,
 }
 

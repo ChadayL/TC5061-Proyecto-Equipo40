@@ -3,19 +3,35 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib.dates import AutoDateLocator, ConciseDateFormatter  # noqa: E402
 from sklearn.metrics import ConfusionMatrixDisplay, PrecisionRecallDisplay  # noqa: E402
 
 
-def plot_regression(actual, predicted):
+def plot_regression(actual, predicted, *, title="P1 · Validación"):
     """Compara los valores reales y estimados y muestra los residuales."""
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     axes[0].hexbin(actual, predicted, gridsize=40, mincnt=1)
     upper = max(float(actual.max()), float(predicted.max()), 1)
     axes[0].plot([0, upper], [0, upper], "k--")
-    axes[0].set(xlabel="Salidas reales", ylabel="Salidas estimadas", title="P1 · Validación")
+    axes[0].set(xlabel="Salidas reales", ylabel="Salidas estimadas", title=title)
     axes[1].hist(actual - predicted, bins=40)
     axes[1].axvline(0, color="black", linestyle="--")
     axes[1].set(xlabel="Real − estimado", ylabel="Frecuencia", title="Residuales")
+    fig.tight_layout()
+    return fig
+
+
+def plot_daily_departures(dates, actual, predicted):
+    """Compara los totales diarios de las estaciones evaluadas."""
+    fig, ax = plt.subplots(figsize=(11, 4.5))
+    ax.plot(dates, actual, label="Reales", marker=".")
+    ax.plot(dates, predicted, label="Predichas", marker=".", linestyle="--")
+    locator = AutoDateLocator()
+    ax.xaxis.set_major_locator(locator)
+    ax.xaxis.set_major_formatter(ConciseDateFormatter(locator))
+    ax.set(title="P1 · Salidas diarias en las estaciones evaluadas", ylabel="Salidas por día")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend()
     fig.tight_layout()
     return fig
 
