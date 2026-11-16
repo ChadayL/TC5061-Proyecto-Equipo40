@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
+from matplotlib import pyplot as plt
 import mlflow
 from mlflow import MlflowClient
 from mlflow.exceptions import MlflowException
@@ -19,7 +21,7 @@ from mibici.config import (
     P1_RIDGE_ALPHA,
     REPORTS_DIR,
 )
-from mibici.dataset import get_data_version
+from mibici.dataset import get_data_version, get_split_periods
 from mibici.features import build_p1_features
 from mibici.modeling.p1 import (
     CATEGORICAL_FEATURES,
@@ -29,9 +31,11 @@ from mibici.modeling.p1 import (
     build_model_pipeline,
     predict_departures,
     prepare_p1_data,
+    prepare_p1_training_data,
 )
-from mibici.modeling.tracking import DepartureModel
+from mibici.modeling.tracking import DepartureModel, configure_tracking, log_effective_params
 from mibici.pipeline import load_stage
+from mibici.plots import plot_daily_departures, plot_regression
 
 app = typer.Typer(help=__doc__)
 
@@ -41,6 +45,13 @@ REPORT_COLUMNS = FEATURE_COLUMNS + [TARGET]
 BOOTSTRAP_SEED = 42
 BOOTSTRAP_REPLICATES = 2_000
 BOOTSTRAP_BLOCK_DAYS = 7
+
+
+def evidently_frame(data: pd.DataFrame) -> pd.DataFrame:
+    """Declare categories for Evidently while preserving the model input dtypes."""
+    return data[REPORT_COLUMNS + ["date"]].astype(
+        {"station_id": "string", "day_of_week": "string"}
+    )
 
 
 def prepare_p1_monitoring_data() -> dict:
@@ -84,13 +95,8 @@ def prepare_p1_monitoring_data() -> dict:
     if train.empty or validation.empty or test_features.empty:
         raise ValueError("Train, validation y test deben contener filas para P1.")
 
-    # Cast IDs/calendar to categorical strings only for Evidently's schema
-    # inference. The estimator receives the original feature dtypes.
-    reference = train[REPORT_COLUMNS + ["date"]].copy()
-    current = test_features[REPORT_COLUMNS + ["date"]].copy()
-    for frame in (reference, current):
-        frame["station_id"] = frame["station_id"].astype("string")
-        frame["day_of_week"] = frame["day_of_week"].astype("string")
+    reference = evidently_frame(train)
+    current = evidently_frame(test_features)
 
     candidate_train = pd.concat([train, validation], ignore_index=True)
     return {
@@ -133,6 +139,97 @@ def calculate_regression_metrics(y_true, predictions) -> dict[str, float]:
         "mae": float(mean_absolute_error(y_true, predictions)),
         "r2": float(r2_score(y_true, predictions)),
     }
+
+
+def run_window_monitoring(start: date, end_exclusive: date, model_version: int) -> dict:
+    """Score a dated P1 window with an existing Registry version."""
+    start, end_exclusive = pd.Timestamp(start), pd.Timestamp(end_exclusive)
+    if start >= end_exclusive:
+        raise ValueError("start debe ser anterior a end_exclusive.")
+
+    experiment = configure_tracking()
+    client = MlflowClient()
+    version = client.get_model_version(MODEL_NAME, str(model_version))
+    source_params = client.get_run(version.run_id).data.params if version.run_id else {}
+    reference_start, reference_end = get_split_periods()["train"]
+    reference_start = pd.Timestamp(source_params.get("train_start", reference_start))
+    reference_end = pd.Timestamp(source_params.get("train_end_exclusive", reference_end))
+    if start < reference_end:
+        raise ValueError(f"El periodo actual debe empezar a partir de {reference_end.date()}.")
+
+    history_start = start - pd.Timedelta(days=7)
+    trips = load_stage("common", start=history_start, end_exclusive=end_exclusive)["viajes"]
+    days = pd.date_range(history_start, end_exclusive, inclusive="left")
+    missing = days.difference(trips["Inicio_del_viaje"].dt.normalize())
+    if len(missing):
+        dates = ", ".join(missing.strftime("%Y-%m-%d"))
+        raise ValueError(f"Faltan viajes en fechas de la ventana o su historial: {dates}")
+
+    _, train, _ = prepare_p1_training_data(reference_start, reference_end)
+    known_stations = sorted(train["station_id"].unique())
+    daily = build_evaluation_daily_data(trips, known_stations, history_start, end_exclusive)
+    current = build_p1_features(daily).loc[lambda frame: frame["date"].ge(start)].copy()
+    model_uri = f"models:/{MODEL_NAME}/{model_version}"
+    model = mlflow.pyfunc.load_model(model_uri)
+    predictions = np.asarray(model.predict(current[FEATURE_COLUMNS]), dtype=float).reshape(-1)
+    metrics = calculate_regression_metrics(current[TARGET], predictions)
+    summary = {
+        "model_uri": model_uri,
+        "model_source_run_id": version.run_id,
+        "model_training_data_version": version.tags.get("data_version"),
+        "reference_data_version": get_data_version(),
+        "reference_start": str(reference_start.date()),
+        "reference_end_inclusive": str((reference_end - pd.Timedelta(days=1)).date()),
+        "current_start": str(start.date()),
+        "current_end_inclusive": str((end_exclusive - pd.Timedelta(days=1)).date()),
+        "history_start": str(history_start.date()),
+        "reference_rows": len(train),
+        "current_rows": len(current),
+        "stations_evaluated": len(known_stations),
+        "excluded_new_station_trips": int(
+            (trips["Inicio_del_viaje"].ge(start) & ~trips["Origen_Id"].isin(known_stations)).sum()
+        ),
+    }
+    snapshot = evidently_snapshot(
+        evidently_frame(train), evidently_frame(current), summary, "p1_monitoring_window"
+    )
+    report_data = json.loads(snapshot.json())
+    result = {
+        **summary,
+        "metrics": metrics,
+        "drift_by_column": extract_column_drift(report_data),
+    }
+    with mlflow.start_run(
+        experiment_id=experiment.experiment_id, tags={"question": "p1", "stage_of_work": "monitoring"}
+    ) as run:
+        mlflow.set_tag("mlflow.runName", f"p1_monitoring_{start.date()}_v{model_version}")
+        output_dir = REPORTS_DIR / "monitoring" / "p1" / "windows" / run.info.run_id
+        output_dir.mkdir(parents=True, exist_ok=True)
+        snapshot.save_html(str(output_dir / "evidently_drift_quality.html"))
+        (output_dir / "evidently_drift_quality.json").write_text(
+            json.dumps(report_data, indent=2), encoding="utf-8"
+        )
+        (output_dir / "resultado.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+        scored = current[["date", "station_id", TARGET]].assign(predicted_departures=predictions)
+        scored.to_csv(output_dir / "predicciones.csv", index=False)
+
+        daily_totals = scored.groupby("date")[[TARGET, "predicted_departures"]].sum()
+        figures = {
+            "salidas_diarias.png": plot_daily_departures(
+                daily_totals.index, daily_totals[TARGET], daily_totals["predicted_departures"]
+            ),
+            "real_vs_predicho.png": plot_regression(
+                scored[TARGET], predictions, title="P1 · Salidas por estación y día"
+            ),
+        }
+        for filename, figure in figures.items():
+            figure.savefig(output_dir / filename, dpi=150)
+            plt.close(figure)
+        log_effective_params(summary, run)
+        mlflow.log_metrics(metrics)
+        mlflow.log_artifacts(str(output_dir), artifact_path="monitoring")
+        typer.echo(f"Reporte: {output_dir / 'evidently_drift_quality.html'}")
+    return result
 
 
 def paired_daily_rmse_bootstrap(
@@ -288,6 +385,32 @@ def _ensure_registry_model(client: MlflowClient, name: str) -> None:
         client.create_registered_model(name)
 
 
+def evidently_snapshot(reference, current, summary, name):
+    try:
+        from evidently import Report
+        from evidently.presets import DataDriftPreset, DataSummaryPreset
+    except ImportError as exc:
+        raise RuntimeError(
+            "Instala el extra de monitoreo: uv sync --locked --extra monitoring"
+        ) from exc
+
+    report = Report(
+        metrics=[
+            DataDriftPreset(columns=REPORT_COLUMNS),
+            DataSummaryPreset(columns=REPORT_COLUMNS + ["date"]),
+        ],
+        include_tests=True,
+        metadata={
+            "project": "MiBici Equipo 40",
+            "question": "P1",
+            "reference_period": f"{summary['reference_start']}/{summary['reference_end_inclusive']}",
+            "current_period": f"{summary['current_start']}/{summary['current_end_inclusive']}",
+            "data_version": summary.get("reference_data_version") or summary["data_version"],
+        },
+    )
+    return report.run(current_data=current, reference_data=reference, name=name)
+
+
 def run_monitoring(candidate_model: str = "ridge", alpha: float = P1_RIDGE_ALPHA) -> dict:
     """Run P1 drift report and register an A/B candidate without moving production."""
     if candidate_model not in {"linear_regression", "ridge"}:
@@ -345,38 +468,8 @@ def run_monitoring(candidate_model: str = "ridge", alpha: float = P1_RIDGE_ALPHA
 
     drift_frame = datasets["current"]
     reference_frame = datasets["reference"]
-    try:
-        from evidently import Report
-        from evidently.presets import DataDriftPreset, DataSummaryPreset
-    except ImportError as exc:
-        raise RuntimeError(
-            "Instala el extra de monitoreo: uv sync --locked --extra monitoring"
-        ) from exc
-
-    drift_report = Report(
-        metrics=[
-            DataDriftPreset(columns=REPORT_COLUMNS),
-            DataSummaryPreset(columns=REPORT_COLUMNS + ["date"]),
-        ],
-        include_tests=True,
-        metadata={
-            "project": "MiBici Equipo 40",
-            "question": "P1",
-            "reference_period": (
-                f"{datasets['summary']['reference_start']}"
-                f"/{datasets['summary']['reference_end_inclusive']}"
-            ),
-            "current_period": (
-                f"{datasets['summary']['current_start']}"
-                f"/{datasets['summary']['current_end_inclusive']}"
-            ),
-            "data_version": datasets["summary"]["data_version"],
-        },
-    )
-    snapshot = drift_report.run(
-        current_data=drift_frame,
-        reference_data=reference_frame,
-        name="p1_train_vs_later_test",
+    snapshot = evidently_snapshot(
+        reference_frame, drift_frame, datasets["summary"], "p1_train_vs_later_test"
     )
     report_data = json.loads(snapshot.json())
     drift_by_column = extract_column_drift(report_data)
@@ -392,6 +485,9 @@ def run_monitoring(candidate_model: str = "ridge", alpha: float = P1_RIDGE_ALPHA
     result_path = output_dir / "resultado_ab.json"
     snapshot.save_html(str(report_html))
     report_json.write_text(json.dumps(report_data, indent=2), encoding="utf-8")
+    from evidently import Report
+    from evidently.presets import DataSummaryPreset
+
     for frame, path, name in (
         (reference_frame, reference_quality_html, "calidad_referencia"),
         (drift_frame, current_quality_html, "calidad_actual"),
@@ -543,8 +639,21 @@ def run_monitoring(candidate_model: str = "ridge", alpha: float = P1_RIDGE_ALPHA
 def main(
     candidate_model: str = typer.Option("ridge", "--candidate-model"),
     alpha: float = typer.Option(P1_RIDGE_ALPHA, "--alpha", min=0.000001),
+    start: str | None = typer.Option(None),
+    end_exclusive: str | None = typer.Option(None),
+    model_version: int | None = typer.Option(None, min=1),
 ):
-    """Genera Evidently y compara producción contra una candidata reentrenada."""
+    """Genera Evidently para una ventana o para la comparación A/B histórica."""
+    if any(value is not None for value in (start, end_exclusive, model_version)):
+        if start is None or end_exclusive is None or model_version is None:
+            raise typer.BadParameter("Indica --start, --end-exclusive y --model-version juntos.")
+        try:
+            start_date, end_date = date.fromisoformat(start), date.fromisoformat(end_exclusive)
+        except ValueError as exc:
+            raise typer.BadParameter("Usa fechas AAAA-MM-DD.") from exc
+        run_window_monitoring(start_date, end_date, model_version)
+        return
+
     run_monitoring(candidate_model=candidate_model, alpha=alpha)
 
 

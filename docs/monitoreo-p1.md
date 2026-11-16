@@ -1,5 +1,59 @@
 # Monitoreo de P1 con Evidently y comparación A/B
 
+## Monitorear un periodo por fechas
+
+Trabaja dentro de `ds_workspace`, con el servidor de MLflow y la [ingesta histórica](datos-mibici.md#ingesta-de-datos) listos. El test histórico de P1 va del **12 de junio al 30 de septiembre de 2026**, ambos incluidos. El comando `monitor-p1-window` evalúa una versión ya registrada sobre el periodo que elijas.
+
+### Elegir las fechas
+
+`start` es el primer día evaluado y `end_exclusive` es el primer día fuera de la ventana. Usa fechas en formato `AAAA-MM-DD`.
+
+| Periodo que quieres evaluar | `start` | `end_exclusive` | Datos necesarios |
+|---|---|---|---|
+| Septiembre | `2026-09-01` | `2026-10-01` | Ingesta histórica |
+| Test histórico completo (111 días) | `2026-06-12` | `2026-10-01` | Ingesta histórica |
+| Octubre | `2026-10-01` | `2026-11-01` | Ingesta histórica y octubre |
+| Septiembre y octubre | `2026-09-01` | `2026-11-01` | Ingesta histórica y octubre |
+| Test histórico más octubre | `2026-06-12` | `2026-11-01` | Ingesta histórica y octubre |
+
+El pipeline también necesita los siete días anteriores a `start` para calcular los rezagos del primer día. Por ejemplo, para empezar el 1 de septiembre lee historial desde el 25 de agosto. Esos días se usan como entrada del modelo. Las gráficas y métricas empiezan en `start`.
+
+### Ejecutar la ventana
+
+Si tu ventana incluye octubre y aún falta su Parquet, ingiere el mes primero:
+
+```bash
+uv run --locked mlflow run . --env-manager local -e ingest-monitoring-month \
+  --experiment-name "$MLFLOW_EXPERIMENT_NAME" -P month=2026-10
+```
+
+Para evaluar septiembre y octubre juntos con `mibici-p1` v1, ejecuta:
+
+```bash
+uv run --locked --extra monitoring mlflow run . --env-manager local -e monitor-p1-window \
+  --experiment-name "$MLFLOW_EXPERIMENT_NAME" \
+  -P start=2026-09-01 -P end_exclusive=2026-11-01 -P model_version=1
+```
+
+Para probar otro periodo, sustituye `start` y `end_exclusive` con los valores de la tabla. Para probar otro modelo, usa el número de una versión registrada de `mibici-p1` en **Models** como `model_version`. El inicio debe ser posterior al último día de entrenamiento de esa versión. Si falta un Parquet para la ventana o sus rezagos, la corrida indica el archivo que debes ingerir.
+
+El pipeline pasa los viajes por `common` y construye las mismas variables diarias de P1. Cada predicción usa las salidas observadas hasta el día anterior.
+
+Evidently compara las variables y las salidas observadas entre la ventana y la referencia reconstruida. Esta referencia usa las fechas de entrenamiento de la corrida de origen cuando están registradas, con el train histórico del proyecto como respaldo. El modelo registrado genera las predicciones y se calculan RMSE, MAE y R² sobre la ventana. Esta corrida conserva la partición 70/15/15 y el manifiesto de la ingesta histórica.
+
+### Revisar los resultados
+
+En MLflow, abre la corrida de tu ventana, por ejemplo `p1_monitoring_2026-09-01_v1`, y entra a **Artifacts → monitoring**. Si ejecutaste varias ventanas con el mismo inicio y versión, comprueba `end_exclusive` en **Parameters** para identificar la que quieres revisar.
+
+- `salidas_diarias.png` compara los totales reales y predichos por día para las estaciones evaluadas. En el total, los errores de estaciones distintas se pueden compensar.
+- `real_vs_predicho.png` muestra la concentración de predicciones por estación y día alrededor de la diagonal ideal, junto con la distribución de los errores.
+- `predicciones.csv` contiene el valor real y el predicho por estación y día.
+- `evidently_drift_quality.html` muestra calidad y drift. `resultado.json` contiene las métricas y fechas de la evaluación.
+
+Una copia queda en `reports/monitoring/p1/windows/<run_id>/`.
+
+## Comparación A/B con la partición histórica
+
 La actividad de observabilidad se implementa para P1 (regresión diaria de salidas) usando la versión de datos disponible en el manifiesto. La partición temporal existente divide del 1 de octubre de 2024 al 30 de septiembre de 2026 en 70/15/15 por días completos. Por el cálculo `int()` de esas proporciones, los intervalos inclusivos resultan:
 
 | Uso | Periodo | Filas para el análisis |
@@ -10,16 +64,11 @@ La actividad de observabilidad se implementa para P1 (regresión diaria de salid
 
 El corte posterior representa un periodo de producción simulado con datos abiertos históricos; no son registros vivos de la API. Ambos modelos se evalúan con predicción diaria a un paso: cada fecha usa las observaciones reales disponibles hasta el día anterior. La población se limita a estaciones con historia en train, porque el modelo registrado no conoce estaciones nuevas. El resumen indica cuántos viajes de origen quedaron fuera de ese alcance. El reporte incluye las variables de entrada de P1 y las salidas observadas (`departures`) para analizar también drift de la variable objetivo.
 
-Instala las dependencias de monitoreo fijadas en `uv.lock`:
-
-```bash
-uv sync --locked --extra monitoring
-```
-
 Desde el contenedor de trabajo, con el servidor de MLflow ya iniciado, define `MLFLOW_TRACKING_URI` y `MLFLOW_EXPERIMENT_NAME` según la [guía de Docker](jupyter-contenedor.md), ejecuta la [ingesta](datos-mibici.md#ingesta-de-datos) si el clon está limpio y confirma que `mibici-p1` tenga el alias `production`. Después ejecuta la entrada `monitor-p1` del MLflow Project:
 
 ```bash
-uv run mlflow run --experiment-name "$MLFLOW_EXPERIMENT_NAME" . --env-manager local -e monitor-p1 -P candidate_model=ridge -P alpha=1.0
+uv run --locked --extra monitoring mlflow run . --env-manager local -e monitor-p1 \
+  --experiment-name "$MLFLOW_EXPERIMENT_NAME" -P candidate_model=ridge -P alpha=1.0
 ```
 
 También puedes probar `candidate_model=linear_regression`. La candidata Ridge se ajusta con train+validation; en ambos casos la versión vigente y la nueva se comparan sobre el mismo test, las mismas estaciones y las mismas variables. El sistema calcula RMSE, MAE y R², y calcula un intervalo de confianza del 95% para `RMSE_candidata - RMSE_producción` con 2,000 remuestreos pareados en bloques móviles de siete días (semilla 42); todas las estaciones del mismo día permanecen juntas. Si el intervalo queda debajo de cero, recomienda la candidata; si queda arriba de cero, recomienda producción; si incluye cero, reporta resultado inconcluso y recomienda conservar producción.

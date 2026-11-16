@@ -5,6 +5,10 @@ python_env: python_env.yaml
 entry_points:
   ingest:
     command: "python -m mibici.dataset ingest"
+  ingest-monitoring-month:
+    parameters:
+      month: {type: str}
+    command: "python -m mibici.dataset ingest-monitoring-month {month}"
   train:
     parameters:
       question: {type: str, default: p1}
@@ -38,3 +42,12 @@ entry_points:
       alpha: {type: float, default: 1.0}
     command: >-
       python -m mibici.monitoring --candidate-model {candidate_model} --alpha {alpha}
+
+  monitor-p1-window:
+    parameters:
+      start: {type: str}
+      end_exclusive: {type: str}
+      model_version: {type: int}
+    command: >-
+      python -m mibici.monitoring --start {start}
+      --end-exclusive {end_exclusive} --model-version {model_version}

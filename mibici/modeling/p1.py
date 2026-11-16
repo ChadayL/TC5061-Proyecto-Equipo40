@@ -195,20 +195,13 @@ def build_evaluation_daily_data(
     return result.sort_values(["station_id", "date"]).reset_index(drop=True)
 
 
-def prepare_p1_data():
-    """Prepara train y validation para predicciones diarias a un paso."""
-    periods = get_split_periods()
-    train_start, train_end = periods["train"]
-    validation_start, validation_end = periods["validation"]
-
-    # Entrenamiento.
-    train_raw = load_stage("common", split="train")
-    train_trips = train_raw["viajes"]
-
+def prepare_p1_training_data(start, end_exclusive):
+    """Construye la referencia de entrenamiento con la preparación habitual de P1."""
+    train_trips = load_stage("common", start=start, end_exclusive=end_exclusive)["viajes"]
     train_daily = build_training_daily_data(
         train_trips,
-        start=train_start,
-        end_exclusive=train_end,
+        start=start,
+        end_exclusive=end_exclusive,
     )
 
     train_features = build_p1_features(train_daily)
@@ -218,6 +211,14 @@ def prepare_p1_data():
     if train_ready.empty:
         raise ValueError("No hay entrenamiento con historia suficiente.")
 
+    return train_daily, train_ready, len(train_features) - len(train_ready)
+
+
+def prepare_p1_data():
+    """Prepara train y validation para predicciones diarias a un paso."""
+    periods = get_split_periods()
+    train_daily, train_ready, excluded_rows = prepare_p1_training_data(*periods["train"])
+    validation_start, validation_end = periods["validation"]
     known_stations = sorted(train_ready["station_id"].unique())
 
     # Validación: mismas estaciones y calendario completo.
@@ -265,7 +266,7 @@ def prepare_p1_data():
         "validation": validation_ready,
         "periods": periods,
         "summary": {
-            "train_rows_excluded": len(train_features) - len(train_ready),
+            "train_rows_excluded": excluded_rows,
             "known_stations": len(known_stations),
             "validation_trips_excluded": int((~included).sum()),
         },

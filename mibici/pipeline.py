@@ -7,13 +7,13 @@ STAGES = [
     ("quality_fixes", quality_fixes.run),
 ]
 
-def load_stage(stage="raw", nrows=None, split="train"):
+def load_stage(stage="raw", nrows=None, split="train", *, start=None, end_exclusive=None):
     stage_names = ["raw"] + [name for name, _ in STAGES] + ["common"]
 
     if stage not in stage_names:
         raise ValueError(f"Stage desconocido: {stage}. Opciones: {stage_names}")
 
-    data = load_raw(nrows=nrows, split=split)
+    data = load_raw(nrows=nrows, split=split, start=start, end_exclusive=end_exclusive)
 
     if stage == "raw":
         return data

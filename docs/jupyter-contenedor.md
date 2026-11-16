@@ -34,14 +34,13 @@ No ejecutar down -v ni levantar dos servidores MLflow sobre el mismo SQLite.
 
 ```powershell
 docker compose config --quiet
-docker compose up -d --build
+docker compose up -d
 docker compose logs ds_workspace
 ```
 
 Abrir http://localhost:8888 usando el token mostrado por Jupyter.
 MLflow está en http://localhost:5000 y MinIO en http://localhost:9001.
-En una instalación nueva, crear el bucket mlflow-artifacts en MinIO antes de registrar artefactos.
-depends_on ordena el arranque; esperar a que MLflow responda antes de entrenar.
+Compose arranca MinIO y ejecuta el servicio minio-init para preparar el bucket mlflow-artifacts. El inicializador termina con código 0 cuando el bucket está listo, y entonces arranca MLflow. Espera a que MLflow responda antes de entrenar.
 
 ## Entrenar desde la terminal de Jupyter
 

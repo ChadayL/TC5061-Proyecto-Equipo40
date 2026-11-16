@@ -1,4 +1,6 @@
 name: mibici-mlops
+
+x-artifacts-destination: &artifacts-destination s3://mlflow-artifacts
 services:
   ds_workspace:
     build:
@@ -42,7 +44,45 @@ services:
       - sqlite:////mlflow/mlflow.db
       - --serve-artifacts
       - --artifacts-destination
-      - s3://mlflow-artifacts
+      - *artifacts-destination
+    networks:
+      - mlops_network
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+
+  minio-init:
+    build:
+      context: .
+      target: mlflow
+    env_file: ./configs/env/mlflow.env
+    environment:
+      MLFLOW_ARTIFACTS_DESTINATION: *artifacts-destination
+    entrypoint: ["python", "-c"]
+    command:
+      - |
+        import os
+        from urllib.parse import urlsplit
+
+        import boto3
+        from botocore.config import Config
+        from botocore.exceptions import ClientError
+
+        bucket = urlsplit(os.environ["MLFLOW_ARTIFACTS_DESTINATION"]).netloc
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=os.environ["MLFLOW_S3_ENDPOINT_URL"],
+            config=Config(connect_timeout=2, read_timeout=3, retries={
+                "mode": "standard", "total_max_attempts": 8,
+            }),
+        )
+        try:
+            s3.head_bucket(Bucket=bucket)
+        except ClientError as error:
+            if error.response["ResponseMetadata"]["HTTPStatusCode"] != 404:
+                raise
+            s3.create_bucket(Bucket=bucket)
+        print(f"Bucket de artefactos listo: {bucket}", flush=True)
     networks:
       - mlops_network
     depends_on:
