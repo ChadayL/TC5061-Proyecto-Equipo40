@@ -34,6 +34,27 @@ Si están activos los contenedores temporales de la prueba, detener
 mibici-api-p1-test y mibici-inference-p1-test antes de arrancar Compose
 para liberar los puertos 8000 y 8080.
 
+## Compose principal y GHCR
+
+El archivo `docker-compose.yml` incluye los servicios `api` e `inference`, además de los servicios base del proyecto. `inference` requiere el modelo P1 en `build/serving`, con los archivos `MLmodel` y `requirements.txt`. También deben estar configurados los archivos de entorno que usa Compose.
+
+Para construir localmente las imágenes y levantar los servicios:
+
+```bash
+docker compose up -d --build
+docker compose ps
+```
+
+El workflow de GitHub Actions construye la imagen de la API en los pushes y pull requests. Después de integrar los cambios en `main`, publica `ghcr.io/chadayl/tc5061-proyecto-equipo40-api` con las etiquetas `latest` y `sha-<commit>`.
+
+Para usar la imagen de la API publicada en GHCR, construye primero la imagen local de inferencia y luego levanta la API:
+
+```bash
+docker compose build inference
+docker compose pull api
+docker compose up -d --no-build api
+```
+
 ## Preparar otra versión u otro modelo
 
 Descargar primero una versión concreta en su propia carpeta, construir la imagen
@@ -74,9 +95,8 @@ la descarga y el arranque con los valores siguientes y sustituir
 | mibici-serving-p3 | mibici-p3/1 | build/serving/mibici-p3-v1 | p3-v1 | 8082 |
 
 Probar cada puerto con su propio serving_input_example.json. Los tres servicios
-exponen /invocations y cada uno usa la firma de su modelo. Cuando se integre
-FastAPI, se pueden declarar los tres servicios en un Compose compartido,
-retirar sus puertos publicados y dirigir cada petición al servicio correspondiente.
+exponen /invocations y cada uno usa la firma de su modelo.
+FastAPI ya está integrado como el servicio `api` en `docker-compose.yml` y se comunica con `inference` por la red interna de Compose.
 
 ## Evidencia y pruebas
 

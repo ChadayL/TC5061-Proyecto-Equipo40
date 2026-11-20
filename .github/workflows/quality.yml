@@ -24,3 +24,37 @@ jobs:
       - name: Dependency vulnerability audit
         continue-on-error: true
         run: uv run pip-audit
+      - name: Build API image
+        run: docker build --target api --tag mibici-api:ci .
+
+  publish-ghcr:
+    needs: checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish API image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: api
+          push: true
+          tags: |
+            ghcr.io/chadayl/tc5061-proyecto-equipo40-api:latest
+            ghcr.io/chadayl/tc5061-proyecto-equipo40-api:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/ChadayL/TC5061-Proyecto-Equipo40

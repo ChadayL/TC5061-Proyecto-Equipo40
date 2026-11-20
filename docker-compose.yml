@@ -103,6 +103,32 @@ services:
     networks:
       - mlops_network
 
+  api:
+    build:
+      context: .
+      target: api
+    image: ghcr.io/chadayl/tc5061-proyecto-equipo40-api:latest
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      INFERENCE_URL: http://inference:8080/invocations
+    depends_on:
+      - inference
+    networks:
+      - mlops_network
+
+  inference:
+    build:
+      context: .
+      target: inference
+      args:
+        MODEL_DIR: build/serving
+    image: mibici-inference:p1-v1
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - mlops_network
+
 networks:
   mlops_network:
     driver: bridge
